@@ -1,0 +1,8 @@
+[client]
+# toolbarMode = "minimal" was tried here to hide the Deploy button, but it
+# also hides the entire header -- including the native running-indicator/
+# Stop control, which this app depends on as the only way to interrupt a
+# call. Left at the default ("auto") so that control stays visible; the
+# Deploy button alone is hidden via CSS in app.py instead
+# ([data-testid="stAppDeployButton"]).
+toolbarMode = "auto"

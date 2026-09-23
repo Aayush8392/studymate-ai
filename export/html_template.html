@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} — StudyMate Pack</title>
+<style>
+  :root{
+    --bg:#f4efe3; --surface:#fffdf7; --surface2:#ece5d3; --border:#ddd3ba;
+    --text:#2a2620; --text-muted:#665f4e; --text-faint:#96907c;
+    --accent:#2f6b5e; --accent-soft:#dfeae6; --accent-text:#1f4a40;
+    --good:#3d7a4f; --good-soft:#e1f0e3;
+    --bad:#a4442e; --bad-soft:#f5e2dc;
+    --attempt-1:#1c5f9e; --attempt-1-soft:#dbe9f7;
+    --attempt-2:#b5651d; --attempt-2-soft:#f7e3d0;
+    --attempt-3:#a4442e; --attempt-3-soft:#f5e2dc;
+    --sans: -apple-system, "Segoe UI", "Inter", system-ui, sans-serif;
+    --serif: Charter, "Cambria", "Iowan Old Style", "Georgia", serif;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    --maxw:680px;
+    --reading-font-size:17px;
+  }
+  :root[data-theme="dark"]{
+    --bg:#181614; --surface:#211e1a; --surface2:#2a2622; --border:#3a352e;
+    --text:#e9e3d6; --text-muted:#a89f8b; --text-faint:#6f6858;
+    --accent:#5aa896; --accent-soft:#243430; --accent-text:#7fc4b2;
+    --good:#5fae76; --good-soft:#1e3226; --bad:#d97e68; --bad-soft:#3a251f;
+    --attempt-1:#6fa8dc; --attempt-1-soft:#1e2e3d;
+    --attempt-2:#e0a45e; --attempt-2-soft:#3a2c1a;
+    --attempt-3:#d97e68; --attempt-3-soft:#3a251f;
+  }
+  :root[data-theme="sepia"]{
+    --bg:#f1e5c9; --surface:#f8efd9; --surface2:#ecdfc0; --border:#d8c69e;
+    --text:#3b2f1f; --text-muted:#6b5a3e; --text-faint:#9c8a68;
+    --accent:#8a5a2b; --accent-soft:#e9d5ab; --accent-text:#6b431d;
+    --good:#4b7a3d; --good-soft:#dcead0; --bad:#a4442e; --bad-soft:#f0d9c9;
+    --attempt-1:#39549c; --attempt-1-soft:#dfe1ef;
+    --attempt-2:#8a5a2b; --attempt-2-soft:#e9d5ab;
+    --attempt-3:#a4442e; --attempt-3-soft:#f0d9c9;
+  }
+  :root[data-theme="paper"]{
+    --bg:#fbfaf6; --surface:#ffffff; --surface2:#f1efe8; --border:#d8d4c8;
+    --text:#161412; --text-muted:#4a463d; --text-faint:#847d6c;
+    --accent:#1f6b5c; --accent-soft:#dcece7; --accent-text:#155146;
+    --good:#2f7a45; --good-soft:#dcf0e2; --bad:#9c3722; --bad-soft:#f4ddd5;
+    --attempt-1:#2549c4; --attempt-1-soft:#e1e6fa;
+    --attempt-2:#9c611f; --attempt-2-soft:#f0e0c8;
+    --attempt-3:#9c3722; --attempt-3-soft:#f4ddd5;
+  }
+  :root[data-theme="contrast"]{
+    --bg:#000000; --surface:#0a0a0a; --surface2:#161616; --border:#ffffff;
+    --text:#ffffff; --text-muted:#e6e6e6; --text-faint:#b3b3b3;
+    --accent:#ffd23f; --accent-soft:#3a2f00; --accent-text:#ffd23f;
+    --good:#5fe37c; --good-soft:#0f2f16; --bad:#ff6b52; --bad-soft:#3a140c;
+    --attempt-1:#6ba8ff; --attempt-1-soft:#00204d;
+    --attempt-2:#ffd23f; --attempt-2-soft:#3a2f00;
+    --attempt-3:#ff6b52; --attempt-3-soft:#3a140c;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:var(--serif); line-height:1.7; font-size:var(--reading-font-size);}
+  .layout{display:flex; min-height:100vh;}
+  nav.toc{
+    width:260px; flex:0 0 auto; background:var(--surface); border-right:1px solid var(--border);
+    padding:20px; position:sticky; top:0; height:100vh; overflow-y:auto; font-family:var(--sans); font-size:13.5px;
+  }
+  nav.toc .brand{font-family:var(--mono); font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-text); margin-bottom:14px;}
+  nav.toc a{display:block; padding:7px 8px; border-radius:6px; color:var(--text-muted); text-decoration:none; font-size:13px; margin-bottom:2px;}
+  nav.toc a:hover{background:var(--surface2); color:var(--text);}
+  nav.toc a.active{background:var(--accent-soft); color:var(--accent-text); font-weight:600;}
+  nav.toc .status-badge{font-size:10.5px; padding:1px 6px; border-radius:4px; margin-left:6px;}
+  .badge-cleared{background:var(--good-soft); color:var(--good);}
+  .badge-learning{background:var(--bad-soft); color:var(--bad);}
+  .nav-toggle{display:none; position:fixed; top:16px; left:16px; z-index:10; padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:var(--sans); font-size:12.5px; cursor:pointer;}
+  main{flex:1; min-width:0;}
+  .page{display:none; max-width:var(--maxw); margin:0 auto; padding:56px 32px 120px;}
+
+  /* reader settings -- theme, text size, column width */
+  .reader-menu-btn{
+    position:fixed; top:16px; right:16px; z-index:30; width:40px; height:40px; border-radius:10px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    display:flex; align-items:center; justify-content:center; font-size:17px; cursor:pointer;
+    box-shadow:0 3px 12px rgba(0,0,0,.12);
+  }
+  .reader-menu-btn:hover{border-color:var(--accent);}
+  .reader-menu{
+    position:fixed; top:62px; right:16px; z-index:30; width:270px;
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:16px; box-shadow:0 10px 32px rgba(0,0,0,.2); font-family:var(--sans);
+    display:none; flex-direction:column; gap:14px;
+  }
+  .reader-menu.open{display:flex;}
+  .rm-group .rm-label{
+    font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--text-faint); margin-bottom:8px;
+  }
+  .rm-group + .rm-group{padding-top:12px; border-top:1px solid var(--border);}
+  .rm-options{display:flex; flex-wrap:wrap; gap:6px;}
+  .rm-options button{
+    flex:1 1 auto; min-width:44px; padding:7px 8px; border-radius:7px;
+    border:1px solid var(--border); background:var(--surface2); color:var(--text-muted);
+    font-family:var(--sans); font-size:12px; cursor:pointer;
+  }
+  .rm-options button:hover{color:var(--text); border-color:var(--accent);}
+  .rm-options button.active{background:var(--accent-soft); color:var(--accent-text); border-color:var(--accent); font-weight:600;}
+  .rm-range{width:100%; accent-color:var(--accent); margin:2px 0 0; cursor:pointer;}
+  .rm-label .rm-val{float:right; font-family:var(--mono); font-size:10.5px; color:var(--text-faint); text-transform:none; letter-spacing:0;}
+  @media (max-width:820px){.rm-group-width{display:none;}}
+  .page.active{display:block;}
+  h1{font-size:1.9em; margin:0 0 8px; padding-bottom:14px; position:relative;}
+  h1::after{content:""; position:absolute; left:0; bottom:0; width:56px; height:3px; background:var(--accent); border-radius:2px;}
+  .subtitle{font-family:var(--sans); color:var(--text-muted); font-size:.9em; margin-bottom:32px;}
+  h2{font-size:1.3em; margin:36px 0 16px; border-bottom:1px solid var(--border); padding-bottom:10px;}
+  p{margin:0 0 16px; text-align:justify;}
+  .glossary-term{font-family:var(--sans); font-weight:700; color:var(--accent-text); margin-top:18px;}
+  .analogy{
+    position:relative; background:var(--surface2); border:1px solid var(--border); border-left:4px solid var(--accent);
+    border-radius:10px; padding:16px 20px; margin:20px 0; font-family:var(--sans); font-size:.92em;
+  }
+  .analogy .label{font-family:var(--mono); font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--accent-text); display:block; margin-bottom:6px;}
+  .why-matters{font-family:var(--sans); font-size:.88em; color:var(--text-muted); border-top:1px solid var(--border); padding-top:12px; margin-top:20px;}
+  .key-terms{margin-top:20px;}
+  .key-terms dt{font-family:var(--sans); font-weight:700; color:var(--accent-text); margin-top:10px;}
+  .key-terms dd{margin:2px 0 0; font-family:var(--sans); font-size:.88em; color:var(--text-muted);}
+  .section-label{font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-text); margin:28px 0 10px;}
+  .section-label:first-of-type{margin-top:0;}
+  .section-label.faint{color:var(--text-faint);}
+  .exam-answer{
+    background:var(--good-soft); border:1px solid var(--good); border-radius:10px;
+    padding:16px 20px; margin:10px 0 24px; font-family:var(--sans); font-size:.9em; color:var(--text);
+    white-space:pre-line;
+  }
+  .expand-hints{font-family:var(--sans); font-size:.88em; margin:10px 0 24px; padding-left:1.2em;}
+  .expand-hints li{margin-bottom:6px; color:var(--text-muted);}
+  .comparisons-block{
+    position:relative; background:var(--surface2); border:1px dashed var(--accent); border-radius:10px;
+    padding:16px 20px; margin:20px 0; font-family:var(--sans); font-size:.92em;
+  }
+  .comparisons-block .label{font-family:var(--mono); font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--accent-text); display:block; margin-bottom:6px;}
+  .remediation-block{
+    border:1px solid var(--rc); border-left:4px solid var(--rc); background:var(--rc-soft);
+    border-radius:10px; padding:16px 20px; margin:20px 0; font-family:var(--sans); font-size:.92em;
+  }
+  .remediation-block .label{font-family:var(--mono); font-size:11px; letter-spacing:.07em; text-transform:uppercase; color:var(--rc); display:block; margin-bottom:6px; font-weight:700;}
+  .remediation-legend{font-family:var(--sans); font-size:.85em; color:var(--text-muted); margin-bottom:16px;}
+  .remediation-legend .dot{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:5px; vertical-align:middle;}
+  .flashcard.remediation{border:1px solid var(--rc); background:var(--rc-soft);}
+  .flashcard-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:20px 0;}
+  @media (max-width:640px){
+    .flashcard-grid{grid-template-columns:1fr;}
+    nav.toc{position:fixed; left:-260px; transition:left .2s; z-index:9; box-shadow:0 0 24px rgba(0,0,0,.2);}
+    nav.toc.open{left:0;}
+    .nav-toggle{display:block;}
+    .page{padding-top:76px;}
+  }
+  .flashcard{
+    background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px;
+    font-family:var(--sans); font-size:13.5px; cursor:pointer; min-height:90px; display:flex; align-items:center; justify-content:center; text-align:center;
+    perspective:600px;
+  }
+  .flashcard .face{transition:opacity .15s ease;}
+  .flashcard .back{display:none; color:var(--accent-text); font-weight:600;}
+  .flashcard.flipped .front{display:none;}
+  .flashcard.flipped .back{display:block;}
+  .quiz-section{margin-bottom:20px;}
+  .quiz-section summary{
+    font-family:var(--sans); font-weight:700; font-size:1.02em; cursor:pointer;
+    padding:10px 4px; list-style:none; display:flex; align-items:center; gap:8px;
+  }
+  .quiz-section summary::-webkit-details-marker{display:none;}
+  .quiz-section summary::before{content:"▸"; color:var(--accent); font-size:.8em; transition:transform .15s;}
+  .quiz-section[open] summary::before{transform:rotate(90deg);}
+  .quiz-q{background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:16px; font-family:var(--sans);}
+  .quiz-q .qtext{font-weight:600; margin-bottom:10px;}
+  .quiz-opt{display:block; width:100%; text-align:left; padding:8px 12px; margin-bottom:6px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--text); cursor:pointer; font-family:var(--sans); font-size:13px;}
+  .quiz-opt:hover{border-color:var(--accent);}
+  .quiz-opt.correct{background:var(--good-soft); border-color:var(--good); color:var(--good);}
+  .quiz-opt.wrong{background:var(--bad-soft); border-color:var(--bad); color:var(--bad);}
+  .reexplain-badge{display:inline-block; font-family:var(--mono); font-size:10.5px; letter-spacing:.05em; background:var(--accent-soft); color:var(--accent-text); border-radius:5px; padding:2px 8px; margin-bottom:10px;}
+  .quiz-score{font-family:var(--sans); font-size:13px; color:var(--text-muted); margin-top:10px;}
+  .reset-btn{
+    padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
+    color:var(--text); font-family:var(--sans); font-size:12.5px; cursor:pointer; margin-bottom:16px;
+  }
+  .reset-btn:hover{border-color:var(--accent); color:var(--accent-text);}
+</style>
+</head>
+<body>
+<button class="nav-toggle" onclick="document.querySelector('nav.toc').classList.toggle('open')">☰ Menu</button>
+<button class="reader-menu-btn" id="readerMenuBtn" title="Display settings">⚙</button>
+<div class="reader-menu" id="readerMenu">
+  <div class="rm-group">
+    <div class="rm-label">Theme</div>
+    <div class="rm-options" data-group="theme">
+      <button data-value="light">Light</button>
+      <button data-value="dark">Dark</button>
+      <button data-value="sepia">Sepia</button>
+      <button data-value="paper">Paper</button>
+      <button data-value="contrast">Contrast</button>
+    </div>
+  </div>
+  <div class="rm-group">
+    <div class="rm-label">Text size <span class="rm-val" id="fontSizeVal">17px</span></div>
+    <input type="range" class="rm-range" id="fontSizeSlider" min="14" max="26" step="1" value="17" aria-label="Text size">
+  </div>
+  <div class="rm-group rm-group-width">
+    <div class="rm-label">Column width <span class="rm-val" id="colWidthVal">680px</span></div>
+    <input type="range" class="rm-range" id="colWidthSlider" min="480" max="960" step="10" value="680" aria-label="Column width">
+  </div>
+</div>
+<div class="layout">
+  <nav class="toc">
+    <div class="brand">{{ title }}</div>
+    <a href="#" data-page="overview" class="nav-link active">Overview</a>
+    {% for c in concepts %}
+    <a href="#" data-page="concept-{{ c.id }}" class="nav-link">{{ c.name }}
+      {% if c.status == 'cleared' %}<span class="status-badge badge-cleared">cleared</span>{% endif %}
+      {% if c.status == 'flagged' %}<span class="status-badge badge-learning">flagged</span>{% endif %}
+    </a>
+    {% endfor %}
+    <a href="#" data-page="flashcards" class="nav-link">Flashcards</a>
+    <a href="#" data-page="quiz" class="nav-link">Self-quiz</a>
+    <a href="#" data-page="glossary" class="nav-link">Glossary</a>
+    {% if pyq_solutions %}
+    <a href="#" data-page="pyq" class="nav-link">PYQ Solutions</a>
+    {% endif %}
+  </nav>
+  <main>
+    <section class="page active" data-page="overview">
+      <h1>{{ title }}</h1>
+      <div class="subtitle">Generated by StudyMate AI — carry this file anywhere, no internet needed.</div>
+      <p>This study pack covers {{ concepts|length }} concept(s) extracted from your notes. Use the sidebar to jump between concept explanations, review flashcards, or self-test with the offline quiz below.</p>
+      {% if has_remediation %}
+      <div class="remediation-legend">
+        Concepts you struggled with in the app show extra "Remediation" sections and flashcards, color-coded by attempt:
+        <span class="dot" style="background:var(--attempt-1);"></span>Attempt 1&nbsp;&nbsp;
+        <span class="dot" style="background:var(--attempt-2);"></span>Attempt 2&nbsp;&nbsp;
+        <span class="dot" style="background:var(--attempt-3);"></span>Attempt 3
+      </div>
+      {% endif %}
+    </section>
+
+    {% for c in concepts %}
+    <section class="page" data-page="concept-{{ c.id }}">
+      <h1>{{ c.name }}</h1>
+      {% if c.attempts > 0 %}<div class="reexplain-badge">Revisited — attempt {{ c.attempts }}</div>{% endif %}
+
+      {% if c.summary_parsed.from_notes %}
+      <div class="section-label">From your notes</div>
+      {% for para in c.summary_parsed.from_notes.split('\n\n') if para.strip() %}
+      <p>{{ para }}</p>
+      {% endfor %}
+      {% endif %}
+
+      {% if c.summary_parsed.explained_further %}
+      <div class="section-label faint">Explained further — beyond your notes</div>
+      {% for para in c.summary_parsed.explained_further.split('\n\n') if para.strip() %}
+      <p>{{ para }}</p>
+      {% endfor %}
+      {% endif %}
+
+      {% if c.summary_parsed.comparisons_and_limits %}
+      <div class="comparisons-block">
+        <span class="label">Comparisons &amp; limitations</span>
+        <p style="margin:0;">{{ c.summary_parsed.comparisons_and_limits }}</p>
+      </div>
+      {% endif %}
+
+      {% if c.summary_parsed.analogy %}
+      <div class="analogy">
+        <span class="label">Analogy</span>
+        <p style="margin:0;">{{ c.summary_parsed.analogy }}</p>
+      </div>
+      {% endif %}
+
+      {% if c.summary_parsed.key_terms %}
+      <dl class="key-terms">
+        {% for kt in c.summary_parsed.key_terms %}
+        <dt>{{ kt.term }}</dt>
+        <dd>{{ kt.definition }}</dd>
+        {% endfor %}
+      </dl>
+      {% endif %}
+
+      {% if c.summary_parsed.exam_answer_example %}
+      <div class="section-label">How to write this in an exam</div>
+      <div class="exam-answer">{{ c.summary_parsed.exam_answer_example }}</div>
+      {% endif %}
+
+      {% if c.summary_parsed.expand_hints %}
+      <div class="section-label">To go further, mention</div>
+      <ul class="expand-hints">
+        {% for hint in c.summary_parsed.expand_hints %}
+        <li>{{ hint }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if c.summary_parsed.why_it_matters %}
+      <div class="why-matters"><strong>Why it matters:</strong> {{ c.summary_parsed.why_it_matters }}</div>
+      {% endif %}
+
+      {% for rem in c.remediations_parsed %}
+      <div class="remediation-block" style="--rc:var(--attempt-{{ rem.attempt }}); --rc-soft:var(--attempt-{{ rem.attempt }}-soft);">
+        <span class="label">🔁 Remediation — Attempt {{ rem.attempt }}</span>
+        {% for para in (rem.summary.explained_further or rem.summary.from_notes).split('\n\n') if para.strip() %}
+        <p style="margin:0 0 10px;">{{ para }}</p>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endfor %}
+
+    <section class="page" data-page="flashcards">
+      <h1>Flashcards</h1>
+      <div class="subtitle">Click a card to flip it.</div>
+      {% if has_remediation %}
+      <div class="remediation-legend">
+        <span class="dot" style="background:var(--attempt-1);"></span>Attempt 1&nbsp;&nbsp;
+        <span class="dot" style="background:var(--attempt-2);"></span>Attempt 2&nbsp;&nbsp;
+        <span class="dot" style="background:var(--attempt-3);"></span>Attempt 3
+        &nbsp;&nbsp;— colored cards were added after you got a topic wrong.
+      </div>
+      {% endif %}
+      <div class="flashcard-grid">
+        {% for f in flashcards if f.source != 'drill' %}
+        <div class="flashcard" onclick="this.classList.toggle('flipped')">
+          <div class="face front">{{ f.front }}</div>
+          <div class="face back">{{ f.back }}</div>
+        </div>
+        {% endfor %}
+        {% for f in flashcards if f.source == 'drill' %}
+        <div class="flashcard remediation" onclick="this.classList.toggle('flipped')"
+             style="--rc:var(--attempt-{{ f.attempt }}); --rc-soft:var(--attempt-{{ f.attempt }}-soft);">
+          <div class="face front">{{ f.front }}</div>
+          <div class="face back">{{ f.back }}</div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="page" data-page="quiz">
+      <h1>Self-quiz</h1>
+      <div class="subtitle">Grades instantly in your browser — for casual revision only, not synced back to the app.</div>
+      <button class="reset-btn" onclick="resetQuiz()">↺ Reset quiz</button>
+      <div id="quiz-container"></div>
+      <div class="quiz-score" id="quiz-score"></div>
+    </section>
+
+    <section class="page" data-page="glossary">
+      <h1>Glossary</h1>
+      {% for kt in glossary_terms %}
+      <div class="glossary-term">{{ kt.term }}</div>
+      <p style="font-size:.9em; color:var(--text-muted);">{{ kt.definition }}</p>
+      {% endfor %}
+    </section>
+
+    {% if pyq_solutions %}
+    <section class="page" data-page="pyq">
+      <h1>PYQ Solutions</h1>
+      <div class="subtitle">Model answers for each question from your uploaded question paper.</div>
+      {% for sol in pyq_solutions %}
+      <div class="quiz-q" style="margin-bottom:20px;">
+        <div class="qtext">Q{{ loop.index }}. {{ sol.question }}</div>
+        {% if sol.matched_concept %}
+        <div style="font-family:var(--sans); font-size:12px; color:var(--text-faint); margin-bottom:10px;">Related concept: {{ sol.matched_concept }}</div>
+        {% endif %}
+        <div class="exam-answer" style="margin:10px 0;">{{ sol.model_answer }}</div>
+        {% if sol.expand_hints %}
+        <div class="section-label" style="margin:14px 0 6px;">To go further, mention</div>
+        <ul class="expand-hints" style="margin:0;">
+          {% for hint in sol.expand_hints %}
+          <li>{{ hint }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+  </main>
+</div>
+
+<script>
+  const QUIZ_DATA = {{ quiz_json }};
+
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      link.classList.add('active');
+      document.querySelector(`.page[data-page="${link.dataset.page}"]`).classList.add('active');
+      document.querySelector('nav.toc').classList.remove('open');
+      window.scrollTo(0,0);
+    });
+  });
+
+  // ---- Reader settings: theme, text size, column width ----
+  const htmlEl = document.documentElement;
+  const menuBtn = document.getElementById('readerMenuBtn');
+  const menu = document.getElementById('readerMenu');
+  menuBtn.addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('open'); });
+  document.addEventListener('click', (e) => {
+    if (menu.classList.contains('open') && !menu.contains(e.target) && e.target !== menuBtn) {
+      menu.classList.remove('open');
+    }
+  });
+
+  function applyTheme(value){
+    htmlEl.setAttribute('data-theme', value);
+    document.querySelectorAll('.rm-options[data-group="theme"] button').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-value') === value);
+    });
+    try { localStorage.setItem('studymate_theme', value); } catch (e) {}
+  }
+  document.querySelectorAll('.rm-options[data-group="theme"] button').forEach(btn => {
+    btn.addEventListener('click', () => applyTheme(btn.getAttribute('data-value')));
+  });
+  let savedTheme = null;
+  try { savedTheme = localStorage.getItem('studymate_theme'); } catch (e) {}
+  applyTheme(savedTheme || 'light');
+
+  function initSlider(sliderId, valId, cssVar, storageKey, def, unit){
+    const slider = document.getElementById(sliderId);
+    const valEl = document.getElementById(valId);
+    if (!slider) return;
+    const lo = parseFloat(slider.min), hi = parseFloat(slider.max);
+    let saved = NaN;
+    try { saved = parseFloat(localStorage.getItem(storageKey)); } catch (e) {}
+    const initial = !isNaN(saved) ? Math.min(hi, Math.max(lo, saved)) : def;
+    function apply(val){
+      htmlEl.style.setProperty(cssVar, val + unit);
+      if (valEl) valEl.textContent = Math.round(val) + unit;
+      slider.value = val;
+    }
+    apply(initial);
+    slider.addEventListener('input', () => {
+      const val = parseFloat(slider.value);
+      apply(val);
+      try { localStorage.setItem(storageKey, String(val)); } catch (e) {}
+    });
+  }
+  initSlider('fontSizeSlider', 'fontSizeVal', '--reading-font-size', 'studymate_fontpx', 17, 'px');
+  initSlider('colWidthSlider', 'colWidthVal', '--maxw', 'studymate_maxw', 680, 'px');
+
+  // Render offline self-quiz, grades client-side, no server call
+  const container = document.getElementById('quiz-container');
+  let score = 0;
+
+  function renderQuiz(){
+    container.innerHTML = '';
+    score = 0;
+    document.getElementById('quiz-score').textContent = '';
+
+    // Group by concept, same as the in-app quiz tab, preserving first-seen order
+    // (a concept's follow-up/remediation questions get appended later in
+    // QUIZ_DATA but still belong under that same concept's section).
+    const groups = [];
+    const groupIndex = {};
+    QUIZ_DATA.forEach((q, qi) => {
+      const key = q.concept || '';
+      if (!(key in groupIndex)) {
+        groupIndex[key] = groups.length;
+        groups.push({ concept: key, items: [] });
+      }
+      groups[groupIndex[key]].items.push({ q, qi });
+    });
+
+    groups.forEach(group => {
+      const details = document.createElement('details');
+      details.className = 'quiz-section';
+      details.open = true;
+      const summary = document.createElement('summary');
+      summary.textContent = group.concept || 'Questions';
+      details.appendChild(summary);
+
+      group.items.forEach(({ q, qi }) => {
+        const div = document.createElement('div');
+        div.className = 'quiz-q';
+        const qtext = document.createElement('div');
+        qtext.className = 'qtext';
+        qtext.textContent = `${qi + 1}. ${q.question}`;
+        div.appendChild(qtext);
+        q.options.forEach((opt, oi) => {
+          const btn = document.createElement('button');
+          btn.className = 'quiz-opt';
+          btn.textContent = opt;
+          btn.onclick = () => {
+            if (btn.dataset.answered) return;
+            div.querySelectorAll('.quiz-opt').forEach(b => b.dataset.answered = '1');
+            if (oi === q.correct_index) {
+              btn.classList.add('correct');
+              score++;
+            } else {
+              btn.classList.add('wrong');
+              div.children[q.correct_index + 1]?.classList.add('correct');
+            }
+            document.getElementById('quiz-score').textContent = `Score: ${score} / ${QUIZ_DATA.length} answered so far`;
+          };
+          div.appendChild(btn);
+        });
+        details.appendChild(div);
+      });
+
+      container.appendChild(details);
+    });
+  }
+
+  function resetQuiz(){ renderQuiz(); }
+
+  renderQuiz();
+</script>
+</body>
+</html>

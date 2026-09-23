@@ -1,0 +1,1223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StudyMate AI — Architecture &amp; Code Primer</title>
+<style>
+  :root{
+    --bg:#f4efe3; --surface:#fffdf7; --surface2:#ece5d3; --border:#ddd3ba;
+    --text:#2a2620; --text-muted:#665f4e; --text-faint:#96907c;
+    --accent:#2f6b5e; --accent-soft:#dfeae6; --accent-text:#1f4a40;
+    --good:#3d7a4f; --good-soft:#e1f0e3;
+    --bad:#a4442e; --bad-soft:#f5e2dc;
+    --xref:#2f5fd0; --xref-soft:#e3e8fb;
+    --sans: -apple-system, "Segoe UI", "Inter", system-ui, sans-serif;
+    --serif: Charter, "Cambria", "Iowan Old Style", "Georgia", serif;
+    --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Consolas, monospace;
+    --maxw:720px;
+    --reading-font-size:17px;
+  }
+  :root[data-theme="dark"]{
+    --bg:#181614; --surface:#211e1a; --surface2:#2a2622; --border:#3a352e;
+    --text:#e9e3d6; --text-muted:#a89f8b; --text-faint:#6f6858;
+    --accent:#5aa896; --accent-soft:#243430; --accent-text:#7fc4b2;
+    --good:#5fae76; --good-soft:#1e3226; --bad:#d97e68; --bad-soft:#3a251f;
+    --xref:#82a8f7; --xref-soft:#1e2740;
+  }
+  :root[data-theme="sepia"]{
+    --bg:#f1e5c9; --surface:#f8efd9; --surface2:#ecdfc0; --border:#d8c69e;
+    --text:#3b2f1f; --text-muted:#6b5a3e; --text-faint:#9c8a68;
+    --accent:#8a5a2b; --accent-soft:#e9d5ab; --accent-text:#6b431d;
+    --good:#4b7a3d; --good-soft:#dcead0; --bad:#a4442e; --bad-soft:#f0d9c9;
+    --xref:#39549c; --xref-soft:#dfe1ef;
+  }
+  :root[data-theme="paper"]{
+    --bg:#fbfaf6; --surface:#ffffff; --surface2:#f1efe8; --border:#d8d4c8;
+    --text:#161412; --text-muted:#4a463d; --text-faint:#847d6c;
+    --accent:#1f6b5c; --accent-soft:#dcece7; --accent-text:#155146;
+    --good:#2f7a45; --good-soft:#dcf0e2; --bad:#9c3722; --bad-soft:#f4ddd5;
+    --xref:#2549c4; --xref-soft:#e1e6fa;
+  }
+  :root[data-theme="contrast"]{
+    --bg:#000000; --surface:#0a0a0a; --surface2:#161616; --border:#ffffff;
+    --text:#ffffff; --text-muted:#e6e6e6; --text-faint:#b3b3b3;
+    --accent:#ffd23f; --accent-soft:#3a2f00; --accent-text:#ffd23f;
+    --good:#5fe37c; --good-soft:#0f2f16; --bad:#ff6b52; --bad-soft:#3a140c;
+    --xref:#6ba8ff; --xref-soft:#00204d;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg); color:var(--text); font-family:var(--serif); line-height:1.7; font-size:var(--reading-font-size);}
+  a{color:var(--xref);}
+  .layout{display:flex; min-height:100vh;}
+  nav.toc{
+    width:290px; flex:0 0 auto; background:var(--surface); border-right:1px solid var(--border);
+    padding:22px 18px 40px; position:sticky; top:0; height:100vh; overflow-y:auto; font-family:var(--sans); font-size:13.3px;
+  }
+  nav.toc .brand{font-family:var(--mono); font-size:11.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent-text); margin-bottom:2px;}
+  nav.toc .brand-sub{color:var(--text-faint); font-size:12px; margin-bottom:18px;}
+  nav.toc .part{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--text-faint); margin:20px 0 6px; padding-top:12px; border-top:1px solid var(--border);
+  }
+  nav.toc .part:first-of-type{margin-top:0; padding-top:0; border-top:none;}
+  nav.toc ul{list-style:none; margin:0 0 2px; padding:0;}
+  nav.toc li{margin:1px 0;}
+  nav.toc a{display:block; padding:5px 8px; border-radius:6px; color:var(--text-muted); text-decoration:none; font-size:12.8px; cursor:pointer;}
+  nav.toc a:hover{background:var(--surface2); color:var(--text);}
+  nav.toc a.active{background:var(--accent-soft); color:var(--accent-text); font-weight:600;}
+  nav.toc a.stub{color:var(--text-faint); font-style:italic; cursor:default;}
+  nav.toc a.stub:hover{background:transparent; color:var(--text-faint);}
+  .nav-toggle{display:none; position:fixed; top:16px; left:16px; z-index:10; padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text); font-family:var(--sans); font-size:12.5px; cursor:pointer;}
+  main{flex:1; min-width:0;}
+  .page{display:none; max-width:var(--maxw); margin:0 auto; padding:56px 32px 140px;}
+  .page.active{display:block;}
+  h1{font-size:2.1em; line-height:1.2; margin:0 0 10px; position:relative; padding-bottom:16px;}
+  h1::after{content:""; position:absolute; left:0; bottom:0; width:64px; height:3px; background:var(--accent); border-radius:2px;}
+  h1 + .subtitle{color:var(--text-muted); font-family:var(--sans); font-size:.92em; margin-bottom:44px;}
+  h2{
+    font-size:1.7em; margin:0 0 22px; padding-bottom:12px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2 .h2-num{
+    font-family:var(--mono); font-weight:700; font-size:.5em; color:var(--surface); background:var(--accent);
+    padding:5px 10px; border-radius:6px;
+  }
+  h3{font-size:1.18em; margin:36px 0 14px; color:var(--accent-text); padding-left:12px; border-left:3px solid var(--accent);}
+  p{margin:0 0 17px; text-align:justify; hyphens:auto;}
+  ul, ol{margin:0 0 17px; padding-left:1.4em;}
+  li{margin-bottom:7px; text-align:justify;}
+  strong{color:var(--text);}
+  code{
+    font-family:var(--mono); font-size:.86em; background:var(--surface2);
+    border:1px solid var(--border); border-radius:4px; padding:1px 6px;
+  }
+  pre{
+    background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+    padding:16px 18px; overflow-x:auto; margin:0 0 22px; font-family:var(--mono); font-size:.82em; line-height:1.6;
+  }
+  pre code{background:none; border:none; padding:0; font-size:1em;}
+  .file-tag{
+    display:inline-block; font-family:var(--mono); font-size:.78em; background:var(--accent-soft); color:var(--accent-text);
+    padding:2px 8px; border-radius:5px; margin:0 0 10px;
+  }
+  .alt-box{
+    border-left:3px solid var(--text-faint); padding:12px 16px; margin:16px 0 22px;
+    background:var(--surface2); border-radius:0 8px 8px 0; font-family:var(--sans); font-size:.9em;
+  }
+  .alt-box p{text-align:left; margin:0 0 8px;}
+  .alt-box p:last-child{margin-bottom:0;}
+  .alt-box .label{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--text-faint); display:block; margin-bottom:8px;
+  }
+  .design-note, .gotcha{
+    position:relative; border-radius:10px; padding:16px 20px; margin:0 0 22px; font-family:var(--sans); font-size:.88em;
+    border:1px solid var(--border); background:var(--surface2); border-left:4px solid var(--accent);
+  }
+  .design-note p, .gotcha p{text-align:left; margin:0;}
+  .design-note .label, .gotcha .label{
+    font-family:var(--mono); font-size:10.5px; letter-spacing:.07em; text-transform:uppercase;
+    color:var(--accent-text); display:block; margin-bottom:6px;
+  }
+  .gotcha{border-left-color:var(--bad); background:var(--bad-soft);}
+  .gotcha .label{color:var(--bad);}
+  table{width:100%; border-collapse:collapse; margin:0 0 22px; font-family:var(--sans); font-size:.86em;}
+  th, td{border:1px solid var(--border); padding:8px 10px; text-align:left; vertical-align:top;}
+  th{background:var(--surface2); font-weight:600; color:var(--accent-text);}
+  .status-note{
+    font-family:var(--sans); font-size:12.5px; color:var(--text-faint);
+    border:1px dashed var(--border); border-radius:8px; padding:12px 14px; margin:0 0 32px;
+  }
+  .page-nav{
+    display:flex; justify-content:space-between; gap:12px; margin-top:52px; padding-top:20px;
+    border-top:1px solid var(--border); font-family:var(--sans); font-size:13px;
+  }
+  .page-nav a{
+    padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--surface2);
+    text-decoration:none; color:var(--text-muted); cursor:pointer;
+  }
+  .page-nav a:hover{border-color:var(--accent); color:var(--accent-text);}
+  .reader-menu-btn{
+    position:fixed; top:18px; right:18px; z-index:30; width:40px; height:40px; border-radius:10px;
+    background:var(--surface); border:1px solid var(--border); color:var(--text);
+    display:flex; align-items:center; justify-content:center; font-size:17px; cursor:pointer;
+    box-shadow:0 3px 12px rgba(0,0,0,.12);
+  }
+  .reader-menu{
+    position:fixed; top:64px; right:18px; z-index:30; width:230px;
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:14px; box-shadow:0 10px 32px rgba(0,0,0,.2); font-family:var(--sans);
+    display:none; flex-direction:column; gap:6px;
+  }
+  .reader-menu.open{display:flex;}
+  .reader-menu button{
+    padding:7px 8px; border-radius:7px; border:1px solid var(--border); background:var(--surface2); color:var(--text-muted);
+    font-family:var(--sans); font-size:12.5px; cursor:pointer; text-align:left;
+  }
+  .reader-menu button.active{background:var(--accent-soft); color:var(--accent-text); border-color:var(--accent); font-weight:600;}
+  @media (max-width:820px){
+    nav.toc{position:fixed; left:-290px; transition:left .2s; z-index:9; box-shadow:0 0 24px rgba(0,0,0,.2); background:var(--bg);}
+    nav.toc.open{left:0;}
+    .nav-toggle{display:block;}
+    .page{padding-top:76px;}
+  }
+</style>
+</head>
+<body>
+<button class="nav-toggle" onclick="document.querySelector('nav.toc').classList.toggle('open')">&#9776; Contents</button>
+<button class="reader-menu-btn" id="readerMenuBtn" title="Theme">&#9788;</button>
+<div class="reader-menu" id="readerMenu">
+  <button data-theme="light">Light</button>
+  <button data-theme="dark">Dark</button>
+  <button data-theme="sepia">Sepia</button>
+  <button data-theme="paper">Paper</button>
+  <button data-theme="contrast">Contrast</button>
+</div>
+
+<div class="layout">
+  <nav class="toc">
+    <div class="brand">StudyMate AI</div>
+    <div class="brand-sub">Architecture &amp; code primer</div>
+
+    <div class="part">Start here</div>
+    <ul>
+      <li><a class="nav-link active" data-page="intro">Overview</a></li>
+    </ul>
+
+    <div class="part">Phase A — How it works</div>
+    <ul>
+      <li><a class="nav-link" data-page="s1">1. What this app is</a></li>
+      <li><a class="nav-link" data-page="s2">2. Tech stack: what &amp; why</a></li>
+      <li><a class="nav-link" data-page="s3">3. Style &amp; Depth, the two axes</a></li>
+      <li><a class="nav-link" data-page="s4">4. The full user journey</a></li>
+      <li><a class="nav-link" data-page="s5">5. The generation pipeline</a></li>
+      <li><a class="nav-link" data-page="s6">6. The verification system</a></li>
+      <li><a class="nav-link" data-page="s7">7. The PYQ subsystem</a></li>
+      <li><a class="nav-link" data-page="s8">8. The adaptive remediation loop</a></li>
+      <li><a class="nav-link" data-page="s9">9. The data model</a></li>
+      <li><a class="nav-link" data-page="s10">10. The export system</a></li>
+      <li><a class="nav-link" data-page="s11">11. The Streamlit interaction model</a></li>
+      <li><a class="nav-link" data-page="s12">12. Known gaps &amp; rough edges</a></li>
+      <li><a class="nav-link" data-page="s13">13. Glossary</a></li>
+    </ul>
+
+    <div class="part">Phase B — The code itself</div>
+    <ul>
+      <li><a class="nav-link" data-page="b1">B1. Foundation utilities</a></li>
+      <li><a class="stub">B2. db.py — Part 1: schema &amp; migrations</a></li>
+      <li><a class="stub">B3. db.py — Part 2: CRUD &amp; queries</a></li>
+      <li><a class="stub">B4. gemini_client.py</a></li>
+      <li><a class="stub">B5. groq_client.py</a></li>
+      <li><a class="stub">B6. style_rules.py</a></li>
+      <li><a class="stub">B7. vision_reader.py</a></li>
+      <li><a class="stub">B8. orchestrator.py</a></li>
+      <li><a class="stub">B9. summarizer.py</a></li>
+      <li><a class="stub">B10. flashcard_maker.py</a></li>
+      <li><a class="stub">B11. verifier.py</a></li>
+      <li><a class="stub">B12. quiz_maker.py</a></li>
+      <li><a class="stub">B13. pyq_solver.py</a></li>
+      <li><a class="stub">B14. pipeline.py</a></li>
+      <li><a class="stub">B15. adaptive_loop.py</a></li>
+      <li><a class="stub">B16. export_builder.py</a></li>
+      <li><a class="stub">B17. app.py — Part 1</a></li>
+      <li><a class="stub">B18. app.py — Part 2</a></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <section class="page active" data-page="intro">
+      <h1>StudyMate AI</h1>
+      <div class="subtitle">Architecture &amp; code primer — built section by section, for real understanding, not just a skim.</div>
+      <div class="status-note">This document is being built incrementally. Sections in the contents list are real, separate pages now — click any non-italic entry to jump straight there. Italicized entries are still to come.</div>
+      <p>Use the sidebar to jump to any finished section. Each one is its own page — nothing to scroll past to get where you want.</p>
+      <div class="page-nav"><span></span><a class="nav-link" data-page="s1">Start with Section 1 →</a></div>
+    </section>
+
+    <section class="page" data-page="s1">
+      <h2><span class="h2-num">1</span> What this app is</h2>
+
+      <p><strong>The problem.</strong> A student uploads their notes or a scanned question paper and needs real study material fast — not just a summary that sounds convincing. Most "summarize my notes" tools mix what's actually in your notes with things the AI already knows about the topic, blended together so smoothly you can't tell which is which. For someone studying for an exam, that's a real risk — you might study something your professor never taught, or trust something the AI just made up.</p>
+
+      <p><strong>What "verified" means here.</strong> Two separate things:</p>
+      <ol>
+        <li><strong>Honest about where it came from</strong> — every explanation is split into two clearly labeled parts: "from your notes" (only what your notes actually say) and "explained further" (anything extra, clearly marked as added). This isn't a check done afterward — it's built into how the AI is asked to write in the first place.</li>
+        <li><strong>Double-checked by a second AI</strong> — once flashcards and quiz questions are written, a <em>different</em> AI (Groq, not the one that wrote them) checks whether each one is actually true and actually about the right topic, before the student ever sees it.</li>
+      </ol>
+
+      <p><strong>Why not just one big "summarize this" request.</strong> The obvious simple approach is one prompt: "here's my notes, give me a summary, flashcards, and a quiz." We didn't do that. Asking one AI request to do four different jobs at once (summarize, make flashcards, make a quiz, and stay honest about sourcing) tends to produce a mediocre version of all four, because the AI's effort gets split across competing goals in a single answer. Instead, this app breaks the work into steps — first figure out the topics, then generate each type of content per topic, one focused request at a time. More total requests, more code to manage, but each individual piece comes out better.</p>
+
+      <div class="alt-box">
+        <span class="label">Alternative not picked: one big request</span>
+        <p><strong>Pros:</strong> far fewer AI calls (cheaper, faster, less code).</p>
+        <p><strong>Cons:</strong> no natural way to double-check individual claims (you'd be checking one giant answer, not small provable pieces), no way to make "how simple" and "how deep" genuinely change the <em>structure</em> of each topic individually, and no easy way to later fix just one weak topic without redoing everything.</p>
+        <p><strong>What would actually change in the code:</strong> there'd be no separate "figure out the topics" step and no per-topic loop — <code>pipeline.py</code> would shrink to one function making one big request, and the double-checking step would either disappear or become much cruder (checking "does this whole answer look okay?" instead of "is this exact flashcard true?").</p>
+      </div>
+
+      <p><strong>Why two separate settings (Style and Depth) instead of one.</strong> Many similar tools use a single slider like "Beginner / Advanced." That mixes up two different things: how something is said (simple words vs. technical language) and how much exists (a quick overview vs. full detail). Someone might want plain, simple language but still want the complete, deep explanation — those aren't the same request, and a single slider can't tell them apart.</p>
+
+      <div class="alt-box">
+        <span class="label">Alternative not picked: one combined setting</span>
+        <p><strong>Pros:</strong> simpler to build, simpler for the user to understand at a glance.</p>
+        <p><strong>Cons:</strong> forces the assumption that "simple" always means "shallow," which isn't true for everyone.</p>
+        <p><strong>What would actually change in the code:</strong> <code>style_rules.py</code> keeps two separate rule tables today — one for wording, one for structure — that get combined per request. A single-setting version would merge these into one table, and every function that currently takes two separate settings would take just one, less flexible one.</p>
+      </div>
+      <div class="page-nav"><a class="nav-link" data-page="intro">← Overview</a><a class="nav-link" data-page="s2">Section 2: Tech stack →</a></div>
+    </section>
+
+    <section class="page" data-page="s2">
+      <h2><span class="h2-num">2</span> Tech stack: what &amp; why</h2>
+
+      <h3>Streamlit (the whole user interface)</h3>
+      <p><strong>What it is.</strong> Streamlit is a Python library that turns a plain Python script into a working web app — no separate frontend code (no HTML/CSS/JavaScript you have to write), no separate backend API. You write Python that says "show a button here, a text box there," and Streamlit turns that into a real webpage automatically.</p>
+      <p><strong>Why we used it.</strong> This is a solo project built to actually finish and work, not a production product with thousands of users. Streamlit lets one person build a real, usable app entirely in Python, fast — no need to learn or maintain a separate web framework (like React) plus a separate API layer (like Flask or FastAPI) plus glue code between them. Every UI decision in this app — buttons, tabs, file uploads, the whole layout — is one Python file, <code>app.py</code>.</p>
+      <p><strong>How it actually behaves (important, and unusual).</strong> Every time you click anything — a button, a tab, a dropdown — Streamlit doesn't just update that one thing. It re-runs your <em>entire</em> Python script from the top, every time. Nothing "stays alive" between clicks except a special dictionary called <code>session_state</code>, which is the only way to remember anything (like "a document is currently selected" or "a button was just clicked") across those re-runs. This sounds wasteful, but for an app this size it's fast enough, and it's why several odd-looking patterns exist in the code (explained properly in Section 11).</p>
+      <div class="alt-box">
+        <span class="label">Alternative: a real frontend + backend (e.g. React + FastAPI)</span>
+        <p><strong>Pros:</strong> far more control over exactly how things look and animate, true instant interactions with no server round-trip needed for simple UI state changes, easier to eventually support many users at once.</p>
+        <p><strong>Cons:</strong> massively more code to write and maintain — two separate codebases in two different languages, needing an API contract between them, deployment of two separate things instead of one. For one person building a personal study tool, that's a lot of extra weeks of work for benefits (scaling to many users, polished animations) that don't matter here.</p>
+        <p><strong>What would actually change in the code:</strong> <code>app.py</code> wouldn't exist at all. There'd be a <code>frontend/</code> folder full of React components, and everything currently living in <code>agents/</code>, <code>services/</code>, and <code>export/</code> would instead sit behind API endpoints (e.g. <code>POST /generate</code>, <code>GET /documents/:id</code>) that the frontend calls over the network. The two-phase busy pattern, the tab-reset issue, the click-blocking overlay — none of those specific problems would exist, because a real frontend can update just one piece of the page without re-running everything else. But a whole new category of problems would show up instead: authentication, API versioning, CORS, deploying two services instead of one.</p>
+      </div>
+
+      <h3>Gemini / the google-genai SDK (the content-generation model)</h3>
+      <p><strong>What it is.</strong> Gemini is Google's family of AI models. <code>google-genai</code> is the official Python library for calling Gemini over the internet. This app specifically uses <code>gemini-3.5-flash-lite</code> — the smallest, fastest, cheapest tier of the Gemini family.</p>
+      <p><strong>Why we used it.</strong> Free tier availability was the deciding factor for a personal project with no budget — Gemini's free tier gives a genuinely usable daily quota (500 requests/day for this specific model) without needing a credit card. <code>flash-lite</code> specifically was chosen for speed and cost over the more capable <code>flash</code> or <code>pro</code> tiers, since this app makes many calls per document (one per concept, times three — summary, flashcards, quiz), so per-call cost and speed matter more here than in an app that makes one call per session.</p>
+      <p><strong>The tradeoff we actually hit.</strong> A smaller/faster model like <code>flash-lite</code> is noticeably worse at reliably following complicated instructions — this showed up directly and repeatedly this session, most clearly in the PYQ answer-length saga (Section 7), where the same instruction sometimes worked and sometimes didn't, purely due to model unreliability, not our wording.</p>
+      <div class="alt-box">
+        <span class="label">Alternative: a bigger Gemini tier, or a different provider (OpenAI GPT, Anthropic Claude)</span>
+        <p><strong>Pros:</strong> more reliable instruction-following, likely better quality answers with less prompt engineering needed to compensate.</p>
+        <p><strong>Cons:</strong> real dollar cost per request instead of free, and/or a much smaller free daily quota — a serious problem for a project that got tested this heavily in one session (we hit Gemini's daily free quota more than once just from testing).</p>
+        <p><strong>What would actually change in the code:</strong> almost nothing structurally — <code>gemini_client.py</code>'s <code>generate_json()</code> function is the only place that actually calls the Gemini API; every agent goes through it. Switching providers would mean rewriting that one file to call a different SDK, and possibly loosening some of the very specific prompt-engineering workarounds we had to build because <code>flash-lite</code> is unreliable (the content-forcing PYQ length spec, the thinking-budget trick) — a more capable model might not need them at all.</p>
+      </div>
+
+      <h3>Groq (the independent verification model)</h3>
+      <p><strong>What it is.</strong> Groq is a different company from Google, running its own AI models on their own specialized hardware built for very fast inference. This app uses Groq to run <code>openai/gpt-oss-120b</code> (an open-weight model, not one of Groq's own) specifically for the verification step — checking whether generated flashcards/quiz questions are actually true and on-topic.</p>
+      <p><strong>Why a second, different provider, not just a second Gemini call.</strong> If the same model checks its own work, it's likely to make the same kind of mistake twice — a blind spot in Gemini's reasoning is likely to also be a blind spot when Gemini is asked "did you get that right?" A genuinely different model, from a different company, trained differently, is much less likely to share the exact same blind spots. This is the entire reason verification runs on Groq and not Gemini.</p>
+      <div class="alt-box">
+        <span class="label">Alternative: verify with Gemini too (a second Gemini call with a "check this" prompt)</span>
+        <p><strong>Pros:</strong> one less API integration to maintain, one less thing that can independently break.</p>
+        <p><strong>Cons:</strong> weaker independence guarantee — exactly the blind-spot risk above.</p>
+        <p><strong>What would actually change in the code:</strong> <code>agents/verifier.py</code> would call <code>gemini_client.generate_json</code> instead of <code>groq_client.generate_json</code>, and <code>services/groq_client.py</code> wouldn't need to exist as a separate file. Functionally the verify step would look almost identical in code — really a one-line swap — but the guarantee it provides would be meaningfully weaker.</p>
+      </div>
+
+      <h3>SQLite (the database)</h3>
+      <p><strong>What it is.</strong> SQLite is a database that lives entirely as a single file on disk (<code>data/studymate.db</code>) — no separate database server process to install, start, or manage. Python has built-in support for it (the <code>sqlite3</code> module), so no extra installation was even needed.</p>
+      <p><strong>Why we used it.</strong> This app runs on one person's machine, used by one person, at a time. A "real" database server (like PostgreSQL or MySQL) is built for many simultaneous users and processes talking to it over a network — none of which applies here. SQLite gives exactly what's needed (structured storage, relationships between tables, the ability to query) with zero setup overhead.</p>
+      <div class="alt-box">
+        <span class="label">Alternative: PostgreSQL</span>
+        <p><strong>Pros:</strong> handles many simultaneous users properly, more advanced features (better concurrent-write handling, more powerful querying).</p>
+        <p><strong>Cons:</strong> requires installing and running a separate database server process, plus connection configuration — real setup overhead for a single-user local app that gets zero benefit from those features.</p>
+        <p><strong>What would actually change in the code:</strong> <code>services/db.py</code> would look almost the same at the function level (<code>create_document</code>, <code>list_concepts</code>, etc. would still exist and do the same jobs) but every raw SQL query would need to go through a proper connection pool instead of opening/closing a fresh file connection per call, and the whole app would need a running Postgres server as a dependency before it could even start — a real deployment step that doesn't exist today.</p>
+      </div>
+
+      <h3>Jinja2 (the export template engine)</h3>
+      <p><strong>What it is.</strong> Jinja2 is a Python templating library — you write an HTML file with placeholders (like <code>{{ title }}</code> or <code>{% for concept in concepts %}</code>) and Jinja2 fills them in with real data to produce a final HTML file.</p>
+      <p><strong>Why we used it.</strong> The downloadable study-pack HTML file needs real content — every concept, every flashcard, every quiz question — inserted into a fixed page layout. Jinja2 is the standard, well-tested way to do exactly that in Python, and it was effectively required the moment we decided the export should be templated HTML rather than built up manually with string concatenation.</p>
+      <div class="alt-box">
+        <span class="label">Alternative: build the HTML by hand with Python string joining</span>
+        <p><strong>Pros:</strong> no extra library dependency.</p>
+        <p><strong>Cons:</strong> quickly becomes unreadable and bug-prone once you need loops (one block per concept) and conditionals (only show a section if it has content) mixed into HTML — which is exactly what the export template needs throughout.</p>
+        <p><strong>What would actually change in the code:</strong> <code>export_builder.py</code>'s <code>build_html()</code> would replace <code>template.render(...)</code> with a much longer function manually gluing strings together, and <code>html_template.html</code> would stop being a clean, readable template file and would instead be scattered across Python string literals.</p>
+      </div>
+
+      <h3>xhtml2pdf (the PDF export)</h3>
+      <p><strong>What it is.</strong> A pure-Python library that converts HTML+CSS into a PDF file.</p>
+      <p><strong>Why we used it.</strong> The PDF export needed to happen without asking the user to install anything extra on their machine (some popular alternatives require separate non-Python system software). xhtml2pdf installs with a normal <code>pip install</code> and nothing else, which mattered a lot for a personal Windows setup with no appetite for wrestling with system-level dependencies.</p>
+      <div class="alt-box">
+        <span class="label">Alternative: WeasyPrint (a more powerful, more accurate HTML-to-PDF renderer)</span>
+        <p><strong>Pros:</strong> much better CSS support (handles modern layout like flexbox and CSS variables, which xhtml2pdf can't), generally nicer-looking output.</p>
+        <p><strong>Cons:</strong> requires installing separate system libraries (Pango, Cairo — graphics libraries, not Python packages) outside of pip, a well-known source of installation pain specifically on Windows.</p>
+        <p><strong>What would actually change in the code:</strong> if WeasyPrint had been used, the PDF export could likely have reused the same interactive HTML template instead of needing a second, simplified <code>pdf_template.html</code> built with plain CSS. The separate, simpler PDF template exists specifically because xhtml2pdf can't handle that CSS.</p>
+      </div>
+
+      <h3>pypdf, python-docx, python-pptx (reading uploaded files)</h3>
+      <p><strong>What they are.</strong> Three separate Python libraries, one per file type, each knowing how to open that specific file format and pull the text out of it: <code>pypdf</code> for PDFs, <code>python-docx</code> for Word documents, <code>python-pptx</code> for PowerPoint slides.</p>
+      <p><strong>Why we used them.</strong> There's no single library that reads all three formats — each file format has its own internal structure, so a dedicated library per format is the normal approach. All three are the standard, most widely-used Python libraries for their respective formats.</p>
+      <div class="alt-box">
+        <span class="label">Alternative: a general-purpose "extract text from any document" service (e.g. cloud OCR, Apache Tika)</span>
+        <p><strong>Pros:</strong> one integration instead of three, possibly better extraction quality for tricky layouts.</p>
+        <p><strong>Cons:</strong> either costs money per use, or requires running a separate service (Tika needs a running Java process) — real overhead compared to three lightweight, free, pure-Python libraries that just work locally.</p>
+        <p><strong>What would actually change in the code:</strong> <code>note_parser.py</code>'s three separate <code>parse_pdf</code>/<code>parse_docx</code>/<code>parse_pptx</code> functions would collapse into one function calling out to whatever the general service's API looks like — simpler code, but a new external dependency where there currently is none.</p>
+      </div>
+      <div class="page-nav"><a class="nav-link" data-page="s1">← Section 1</a><a class="nav-link" data-page="s3">Section 3: Style &amp; Depth →</a></div>
+    </section>
+
+    <section class="page" data-page="s3">
+      <h2><span class="h2-num">3</span> Style &amp; Depth, the two axes</h2>
+
+      <p><strong>What each one actually controls.</strong></p>
+      <p><strong>Style</strong> (Simple / Standard / Technical) changes how things are said — vocabulary, sentence length, and how much jargon gets explained versus assumed. At Simple, sentences stay short (around 15 words), and every technical term gets explained the moment it's used, even ones that might seem basic. At Technical, the app assumes real background knowledge and writes the way a textbook in that field would.</p>
+      <p><strong>Depth</strong> (Overview / Standard / Deep dive) changes how much exists — not just longer writing, but genuinely different amounts of content and structure: how many topics the notes get split into, how many fields each topic's explanation has, how many flashcards and quiz questions get made, and how long/structured an exam-answer example is.</p>
+
+      <p><strong>Why these had to be genuinely structural, not just "write more words."</strong> Early on, it would have been easy to fake Depth by just telling the AI "write a longer answer" at Deep dive. That's not what happens here — different depths ask for different fields to exist at all, different numbers of topics, different counts of everything downstream. The reason: a real difference a student can see and rely on (this Depth gives me way more flashcards and a comparisons section; this one doesn't) is much more trustworthy than a subtle "well, the paragraphs are a bit longer I guess."</p>
+
+      <div class="alt-box">
+        <span class="label">Alternative not picked: control length with a single "write N words" instruction</span>
+        <p><strong>Pros:</strong> much simpler to write and reason about — one instruction, one number.</p>
+        <p><strong>Cons:</strong> this was tried, repeatedly, in a related but separate part of the app (the exam-answer feature for question papers) — and small/fast AI models turned out to be bad at reliably hitting a target word count. They'd satisfy the letter of "write more" with padding or repetition rather than genuinely writing more content.</p>
+        <p><strong>What would actually change in the code:</strong> if length instructions had been used instead, <code>style_rules.py</code>'s <code>DEPTH_PARAMS</code> table (concept counts, flashcard counts, quiz counts, which explanation fields exist) wouldn't need to exist at all — depth would just be one line in a prompt, and the app would have no way to guarantee a real structural difference, only hope the AI actually delivered one.</p>
+      </div>
+
+      <h3>Exactly what gets added at each depth</h3>
+      <p>The explanation itself grows by adding internal building blocks, not by "writing more." Every concept's main explanation is actually assembled from up to three separate pieces, and how many of those pieces exist is exactly what Depth controls:</p>
+      <table>
+        <tr><th>Depth</th><th>Pieces used to build the explanation</th></tr>
+        <tr><td>Overview</td><td><code>explanation_core</code> only — what the concept is and how it works, nothing else</td></tr>
+        <tr><td>Standard</td><td><code>explanation_core</code> + <code>explanation_detail</code> — adds a specific mechanism or nuance that genuinely isn't already covered in the core piece</td></tr>
+        <tr><td>Deep dive</td><td><code>explanation_core</code> + <code>explanation_detail</code> + <code>explanation_example</code> — adds a concrete real-world scenario showing the concept in action</td></tr>
+      </table>
+      <p>These three pieces get joined together (with a blank line between them) into what the student sees as one continuous "explained further" section — so a Deep dive concept isn't "the same paragraph but longer," it's genuinely three distinct, separately-generated pieces of content stitched together, each doing a different job.</p>
+
+      <p>On top of that, whole extra sections switch on or off entirely:</p>
+      <table>
+        <tr><th></th><th>Overview</th><th>Standard</th><th>Deep dive</th></tr>
+        <tr><td>Comparisons &amp; limitations section</td><td>doesn't exist</td><td>doesn't exist</td><td>exists</td></tr>
+        <tr><td>"To go further" hints</td><td>0</td><td>3</td><td>6</td></tr>
+        <tr><td>Flashcards per concept</td><td>3</td><td>5</td><td>7</td></tr>
+        <tr><td>Quiz questions per concept</td><td>2</td><td>3</td><td>5</td></tr>
+        <tr><td>Exam-answer example length</td><td>2-3 sentences, bare definition</td><td>4-6 sentences</td><td>8+ sentences, or structured sub-points for list-type questions</td></tr>
+        <tr><td>Concepts the notes get split into</td><td>~3-6 total (broad, merged)</td><td>~5-9 total (moderate)</td><td>~8-14 total (granular, split apart)</td></tr>
+      </table>
+
+      <p>Key terms are a slightly different case — they depend on Style too, not just Depth, since a beginner (Simple style) needs more vocabulary scaffolding than an expert (Technical style) even at the same Depth:</p>
+      <table>
+        <tr><th>Style ↓ / Depth →</th><th>Overview</th><th>Standard</th><th>Deep dive</th></tr>
+        <tr><td>Simple</td><td>2-3 terms</td><td>3-5 terms</td><td>5-7 terms</td></tr>
+        <tr><td>Standard</td><td>1-2 terms</td><td>2-4 terms</td><td>4-6 terms</td></tr>
+        <tr><td>Technical</td><td>exactly 1 term</td><td>1-3 terms</td><td>3-5 terms</td></tr>
+      </table>
+      <p>That table is checked in code too, not just requested in the prompt — if the model returns fewer key terms than the minimum for that combination, <code>summarizer.ensure_key_terms_count</code> generates more to top it up, rather than trusting the AI got the count right on its own.</p>
+      <div class="page-nav"><a class="nav-link" data-page="s2">← Section 2</a><a class="nav-link" data-page="s4">Section 4: The user journey →</a></div>
+    </section>
+
+    <section class="page" data-page="s4">
+      <h2><span class="h2-num">4</span> The full user journey</h2>
+
+      <p>This section walks through what actually happens on screen, step by step, from opening the app to holding a finished study pack — and at each fork in that path, why it was built that way instead of some other reasonable way.</p>
+
+      <h3>Two entry points, one pipeline</h3>
+      <p>A student can start from either the sidebar's "Upload new notes" section or its "...or solve a question paper (PYQ)" section — upload their own notes, or upload a previous-year question paper instead (or a photo of one). These feel like two different features, but underneath they run through the <em>same</em> generation pipeline. For a PYQ upload, the questions themselves get read out first and are then treated exactly like "notes" for everything downstream — the same concept-extraction step, the same per-concept summary/flashcard/quiz generation. The only genuinely separate thing that happens afterward is writing model answers to the actual questions.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: two separate, independent features</span>
+        <p><strong>Pros:</strong> each path could be tuned and reasoned about in complete isolation, with no risk of a change to one accidentally affecting the other.</p>
+        <p><strong>Cons:</strong> a PYQ upload still needs a concept summary, flashcards, and a quiz — a student solving past papers still needs to actually learn the material, not just see model answers. Building that a second time, separately, would mean writing (and later fixing bugs in) the same concept-extraction and content-generation logic twice.</p>
+        <p><strong>What would actually change in the code:</strong> <code>pipeline.py</code>'s <code>generate_from_pyq</code> function wouldn't exist as a thin wrapper around <code>generate_study_material</code> — it would be its own, separately maintained copy of the whole per-concept generation loop, with its own copies of the same bugs to find and fix independently.</p>
+      </div>
+
+      <h3>Who actually receives the call, and who it passes through — agent by agent</h3>
+      <p>Two different kinds of things exist in this codebase, and it matters which one you're talking about:</p>
+      <ul>
+        <li>The <strong>8 agents</strong> — each one does exactly one AI-generation job and nothing else. None of them know about each other. None of them call each other.</li>
+        <li>The <strong>Pipeline</strong> — not an agent itself, and not the same thing as the Orchestrator agent (easy to mix up because the names sound similar). The Pipeline is the coordinator that sits above all 8 agents, calls them one at a time in a fixed order, and passes the result of one into the next. Every agent hands its result back to the Pipeline, not directly to the next agent.</li>
+      </ul>
+      <p>So when "Generate study material" is clicked, the click goes to the Pipeline first — never straight to an agent. From there, here is exactly which agent gets called, in what order:</p>
+      <ol>
+        <li><strong>Orchestrator</strong> is the first agent called, and only once per document. Its only job: read the whole notes and return the list of topics (concepts). Nothing else has happened yet — no explanations, no flashcards, nothing — just the table of contents for the document.</li>
+        <li><strong>Then, for each topic in that list, one at a time, in this fixed order:</strong>
+          <ol>
+            <li><strong>Summarizer</strong> — writes that one topic's explanation.</li>
+            <li><strong>Flashcard Maker</strong> — writes flashcards for that same topic.</li>
+            <li><strong>Verifier</strong> — checks those flashcards (this is a completely different agent from the one that wrote them, deliberately, see Section 6).</li>
+            <li><strong>Quiz Maker</strong> — writes quiz questions for that same topic.</li>
+            <li><strong>Verifier</strong> — checks those quiz questions too (the same Verifier agent, called a second time for this topic).</li>
+          </ol>
+          Only once all five of those steps are done for one topic does the Pipeline move on to the <em>next</em> topic and start that same five-step sequence again from Summarizer.
+        </li>
+      </ol>
+      <p><strong>Is this sequential or parallel? Strictly sequential — nothing here runs at the same time as anything else.</strong> Topic 2 does not start until every one of the five steps for Topic 1 has completely finished. Within one topic, the five steps also happen strictly in that order — Quiz Maker never starts before Flashcard Maker's result has already come back and been checked by the Verifier. There is no point anywhere in this whole process where two agents are doing work at the same moment.</p>
+      <p><strong>Why sequential, when several of these steps don't actually depend on each other.</strong> Flashcard Maker and Quiz Maker for the same topic genuinely don't need each other's output — they could, in principle, run at the same time. Two different topics also don't depend on each other at all — Topic 5's flashcards have nothing to do with Topic 2's summary. Running things in parallel would very likely make the whole process noticeably faster. It isn't done here because of how Streamlit itself works (Section 2 and Section 11): the entire app is one single script running top to bottom, with no separate background workers set up to run things at the same time. Adding real parallelism would mean introducing a genuinely different piece of machinery (background threads or async tasks) purely to manage that — a bigger architectural change than this project's scale called for, so simple, predictable, one-thing-at-a-time execution was accepted instead.</p>
+      <p>Two agents sit slightly outside this main sequence:</p>
+      <ul>
+        <li><strong>Vision Reader</strong> is called <em>before</em> the Pipeline even starts, only if the student uploaded photos of notes instead of a text-based file — it turns the photos into plain text first, and that text is what the Pipeline receives as "notes." Vision Reader never talks to Orchestrator or any other agent directly.</li>
+        <li><strong>PYQ Solver</strong> only gets involved for a question-paper upload, and it's called at two completely different points, not as part of the topic-by-topic loop at all: once <em>before</em> the Pipeline starts (to read the questions off the paper and turn them into text, the same role Vision Reader plays for photographed notes), and once <em>after</em> the entire Orchestrator → Summarizer → Flashcard Maker → Verifier → Quiz Maker → Verifier sequence has completely finished for every topic (to actually write the model answers, now that topics exist to match answers against). So a question-paper upload runs everything a plain-notes upload runs, plus PYQ Solver bookending it on both sides.</li>
+      </ul>
+
+      <h3>Style Rules — the one thing every agent actually shares</h3>
+      <p>One more piece is worth naming here even though it never gets "called" the way the others do: Style Rules isn't an agent (it never talks to an AI model), but every single agent above reads from it before it writes its own request — it's where the current Style and Depth settings actually live as concrete rules and numbers (the tables in Section 3 come from here). So really, every arrow in the sequence above is also quietly touching Style Rules first, even though it's not part of the main call chain.</p>
+
+      <h3>Why a plain coordinator (the Pipeline) instead of an orchestrator <em>agent</em></h3>
+      <p>A reasonable alternative design: instead of a fixed, hardcoded order, have one AI agent whose actual job is deciding, in the moment, "call Summarizer next," "now call Flashcard Maker," and so on — using its own reasoning rather than a sequence a programmer wrote down in advance. That's a real, named pattern in agentic AI design (often called an <strong>orchestrator-agent</strong> or <strong>supervisor-agent</strong> pattern). We didn't build it that way, for one specific reason: <strong>the sequence of who gets called never actually varies.</strong> Every time, for every document, the order is identical. There is no situation here where the right next step depends on judgment — it's a fixed recipe, not a decision.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: an LLM-based orchestrator agent that decides the call sequence itself</span>
+        <p><strong>Where this would genuinely earn its keep:</strong> a task where the right next step really does depend on judgment — e.g. "the Verifier keeps rejecting this topic's flashcards, should I regenerate them, skip flashcards for this topic, or ask the Summarizer to expand the explanation first?" That's a real decision an intelligent orchestrator could improve on. Our current pipeline doesn't do that kind of adaptive branching anywhere — it just fails a check and moves on (Section 6's "fails open" behavior).</p>
+        <p><strong>Cons of building it anyway:</strong> an extra AI call, every single step, just to decide something that never actually needs deciding (real added cost and time for zero gained flexibility); new unpredictability on purpose, for a task that doesn't want any (an LLM-decided flow could skip a step or reorder things differently on a technically identical rerun); and much harder to debug — a fixed pipeline fails at a known line, every time, while an LLM-decided flow can take a different path on two runs of the same input.</p>
+        <p><strong>What would actually change in the code:</strong> <code>pipeline.py</code>'s plain function calls and for-loop would be replaced by a new agent whose entire job is routing — reading the current state and deciding which of the other 8 agents to call next, in a loop, until it decides the document is done. That agent would need its own careful prompt design (what does "done" mean, how does it avoid infinite loops, how does it recover from a bad decision) — real added complexity, for a task where the current fixed order has never actually needed to change.</p>
+      </div>
+
+      <h3>Single-agent or multi-agent system?</h3>
+      <p><strong>Multi-agent.</strong> There are 8 distinct agents, each specialized in one job, each independently calling an LLM to do that job — that's the basic definition of multi-agent. But multi-agent systems aren't all the same shape, and it's worth being precise about which shape this one is:</p>
+      <ul>
+        <li><strong>Peer-to-peer / conversational</strong> — agents talk directly to each other, negotiate, or critique each other's work. <em>Not this app.</em> No agent here has ever seen another agent's raw output as a conversation partner — Verifier doesn't talk to Flashcard Maker, it just receives what Flashcard Maker produced, handed to it by the Pipeline.</li>
+        <li><strong>Orchestrator-agent / supervisor pattern</strong> — a central <em>agent</em> (itself LLM-driven) decides who to call and when, adaptively. <em>Not this app either</em> — the coordinator (the Pipeline) is plain deterministic code, not an agent, and the sequence is fixed in advance by the programmer, not decided at runtime.</li>
+        <li><strong>Sequential / pipeline pattern</strong> — a fixed, predetermined sequence of specialized agents, coordinated by a non-agent controller. <strong>This is exactly what StudyMate AI is.</strong></li>
+      </ul>
+      <p>The precise, defensible answer: it's a <strong>multi-agent system using a sequential pipeline architecture</strong>, with centralized coordination handled by deterministic code rather than by an LLM-based orchestrator or by agent-to-agent communication — 8 separate agents, acting one after another, coordinated by a plain code layer, never talking to each other directly.</p>
+
+      <h3>Style and Depth are chosen once, up front</h3>
+      <p>Both settings are picked at upload time, before generation starts — not something you can change per-section afterward, and not something re-asked later (e.g. when taking the quiz, or when a weak topic gets remediated; remediation reuses the document's original Style/Depth automatically, see Section 8).</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: adjustable per-section, after generation</span>
+        <p><strong>Pros:</strong> more flexible — a student could read Overview first for a quick pass, then re-read the same topic at Deep dive without generating a whole new document.</p>
+        <p><strong>Cons:</strong> Depth doesn't just change wording, it changes <em>how many concepts exist in the first place</em> (Section 3) — Overview might merge two ideas into one concept that Deep dive would split apart. Changing Depth after the fact isn't "show more text," it's "regenerate the whole concept structure," which is really a new document, not a setting toggle on an existing one.</p>
+        <p><strong>What would actually change in the code:</strong> concepts, flashcards, and quiz questions would need to store which Style/Depth they were generated at, and the UI would need a way to regenerate just one concept at a new Depth without touching the others — a real feature that doesn't exist today; right now Style/Depth belong to the <em>document</em> (<code>documents.explanation_style</code>, <code>documents.depth_level</code> in the database), not to each individual piece of content.</p>
+      </div>
+
+      <h3>Generation is one long blocking step, not a progressive reveal</h3>
+      <p>Clicking "Generate study material" shows a growing checklist (topic names turning green as each one finishes) but doesn't let you look at the first finished topic while the rest are still generating — the whole document becomes available all at once, at the end. While it's running, the entire rest of the app is deliberately disabled (a full-page overlay, explained in Section 11), not just the button you clicked.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: reveal each concept as soon as it's ready, let the student start reading immediately</span>
+        <p><strong>Pros:</strong> feels faster — you'd start reading the first topic while later ones are still being generated in the background, instead of watching a checklist and waiting.</p>
+        <p><strong>Cons:</strong> Streamlit's execution model (Section 2/11) makes true background work while the UI stays interactive a real engineering project of its own — by default, the script that's generating content <em>is</em> the same script rendering the page, so "let the student browse while generation continues" would need a fundamentally different architecture (a background worker process, a job queue, polling for progress) rather than the one-process, one-script design this app uses everywhere else.</p>
+        <p><strong>What would actually change in the code:</strong> <code>pipeline.generate_study_material</code>'s per-concept loop would need to run somewhere other than directly inside the Streamlit script — a background thread or separate process — with <code>app.py</code> polling it for progress instead of calling it directly and waiting. That's a substantially different app, not a small change to this one.</p>
+      </div>
+
+      <h3>The five-tab result view</h3>
+      <p>Once generated, a document opens into five tabs: <strong>Summary</strong> (every concept's explanation), <strong>Flashcards</strong>, <strong>Quiz</strong>, <strong>Progress dashboard</strong> (per-concept status: cleared, still learning, flagged), and — only if the document came from a question paper — <strong>PYQ Solutions</strong>. The quiz grades itself instantly inside the app (no AI call involved in grading — it's just comparing your selected answer to the stored correct index), and answering enough questions wrong on a topic marks it weak, surfaced on the Progress dashboard with a "Fix weak topics now" button.</p>
+      <p><strong>Why remediation is a button the student clicks, not something that happens automatically the moment a topic is detected as weak.</strong> Automatically regenerating content the instant a threshold is crossed would mean firing off real AI calls (cost, time, and — see Section 11 — a full-page block on the rest of the app) as a side effect of just answering quiz questions, with no chance for the student to finish the quiz first or decide they'd rather come back to it later.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: automatic remediation the moment a topic crosses the weak threshold</span>
+        <p><strong>Pros:</strong> one less click, feels more "adaptive" in the moment.</p>
+        <p><strong>Cons:</strong> triggers expensive AI work as a side effect of answering a single question, potentially mid-quiz, and takes away the student's ability to just finish the quiz first and decide afterward whether they want to fix anything right now.</p>
+        <p><strong>What would actually change in the code:</strong> the weak-topic check (<code>adaptive_loop.is_weak</code>) currently only decides whether to <em>show</em> the "Fix weak topics now" button — it doesn't call <code>run_remediation</code> itself. An automatic version would call it immediately after grading, inside the same code path that records a quiz answer, turning a simple, fast, local grading action into one that might unpredictably take many seconds and consume API quota.</p>
+      </div>
+
+      <h3>Export, at the very end</h3>
+      <p>Once satisfied, the student can download the whole document as a self-contained HTML file (interactive — flippable flashcards, a working in-browser quiz, adjustable reading theme) or as a PDF (static, print-friendly, everything pre-revealed since paper can't be clicked). Both are offered as separate, independent downloads, not a single combined format.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: one export format that covers both use cases</span>
+        <p><strong>Pros:</strong> one button instead of two, one template to maintain instead of two.</p>
+        <p><strong>Cons:</strong> an interactive, click-to-flip flashcard or a JavaScript-graded quiz simply doesn't exist on paper — a PDF has no JavaScript at all. The two formats have genuinely incompatible requirements (interactive-and-hidden vs. static-and-revealed), not just a styling difference.</p>
+        <p><strong>What would actually change in the code:</strong> this was tried, in effect, at the code level — the PDF export deliberately does <em>not</em> reuse <code>html_template.html</code> (Section 10 covers why in full); it has its own separate, simpler template. A single-format approach would mean picking one of those two designs and losing the other's benefit entirely (either a PDF with dead click-to-flip cards that don't work on paper, or an HTML export with everything pre-revealed and no interactivity even though a browser could support it).</p>
+      </div>
+      <div class="page-nav"><a class="nav-link" data-page="s3">← Section 3</a><a class="nav-link" data-page="s5">Section 5: The generation pipeline →</a></div>
+    </section>
+
+    <section class="page" data-page="s5">
+      <h2><span class="h2-num">5</span> The generation pipeline</h2>
+
+      <p>Section 4 traced <em>which agent gets called, in what order</em>. This section goes one level deeper — the design decisions living inside the Pipeline itself, around and between those agent calls, that make the whole thing reliable rather than just functional.</p>
+
+      <h3>The grounding-text pattern</h3>
+      <p>Flashcards and quiz questions for a concept aren't generated against the raw notes alone — they're generated (and later verified) against the notes <em>plus</em> that concept's own explanation, which was just written by the Summarizer a moment earlier. That combined text is what gets called "grounding text" throughout the codebase.</p>
+      <p><strong>Why this matters, concretely.</strong> A concept the student typed in manually (the "extra concepts" field) might not be mentioned in the uploaded notes at all — that's the whole point of letting someone add a concept themselves. If flashcards for that concept were generated and checked against the notes alone, there'd be nothing in the notes to ground them in: the Verifier would correctly reject everything as unsupported, and that concept would end up with zero flashcards and zero quiz questions, silently. Grounding against the concept's own explanation too means there's always real, checkable material to work from and verify against, even for a concept the notes never mention.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: ground flashcards/quiz in the raw notes only</span>
+        <p><strong>Pros:</strong> simpler to reason about — "grounded in the notes" means exactly what it sounds like, no second source involved.</p>
+        <p><strong>Cons:</strong> this was tried, in effect, before the pattern existed, and it produced exactly the failure described above — manually-added concepts systematically ended up empty, because there was nothing in the notes to generate or verify real content against.</p>
+        <p><strong>What would actually change in the code:</strong> the one line in <code>pipeline.py</code> that builds <code>grounding_text</code> by combining notes and the concept's summary would just pass the raw notes straight through instead — a tiny code change with a large, systematic content-quality consequence.</p>
+      </div>
+
+      <h3>Saving progress as it happens, not all at once at the end</h3>
+      <p>A document row is created in the database the moment generation starts — before a single concept has been written. Each concept's summary is saved the instant it's generated, before its flashcards even begin. Flashcards are saved before the quiz for that concept starts. Nothing is held in memory and written out in one big batch at the very end.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: build the whole document in memory, write it to the database once at the end</span>
+        <p><strong>Pros:</strong> fewer, larger database writes instead of many small ones; slightly simpler code (no need to think about "what if we stop partway through").</p>
+        <p><strong>Cons:</strong> if anything interrupts generation partway through — a Gemini daily quota running out (a real thing that happened repeatedly during testing), a network failure, the student clicking Stop — an all-at-the-end design loses <em>everything</em> generated so far, even concepts that finished perfectly minutes earlier. Writing incrementally means a run that dies on concept 6 of 9 still leaves a real, usable document with 5 complete concepts in it, not nothing.</p>
+        <p><strong>What would actually change in the code:</strong> <code>pipeline.py</code>'s many small <code>db.add_flashcard</code>/<code>db.update_concept_summary</code>/etc. calls scattered through the per-concept loop would collapse into one big write after the entire loop finishes — and every one of those <code>try/except/finally</code> patterns in <code>app.py</code> that exist specifically to handle a run stopping partway through (Section 11) would have nothing left to save when that happens.</p>
+      </div>
+
+      <h3>Where concepts come from, and how two sources get merged</h3>
+      <p>Every concept has a <code>source</code>: <code>"auto"</code> (found by the Orchestrator) or <code>"manual"</code> (typed in by the student in the "extra concepts" field). The manual ones are added <em>after</em> the Orchestrator's own call returns, checked against what the Orchestrator already found (case-insensitively, so "Price Elasticity" and "price elasticity" count as the same one) and only appended if genuinely new — never folded into the prompt the Orchestrator itself sees.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: include the student's requested concepts in the Orchestrator's own prompt</span>
+        <p><strong>Pros:</strong> one unified step instead of an extraction call plus a separate merge step.</p>
+        <p><strong>Cons:</strong> an AI call is still just a request, not a guarantee — asking the Orchestrator to "make sure to include X" doesn't actually guarantee X survives in its returned list; it might still merge X into a broader concept, rename it, or drop it if it judges it out of scope. A concept the student explicitly typed in needs to be guaranteed to exist, not just requested.</p>
+        <p><strong>What would actually change in the code:</strong> <code>orchestrator.extract_concepts</code> would fold <code>extra_concepts</code> into its own prompt text and return one combined list, with no separate merge step in <code>pipeline.py</code> afterward — simpler, but with no code-level guarantee a manually-requested concept actually made it into the final list.</p>
+      </div>
+
+      <h3>Two layers of defense before content is trusted</h3>
+      <p>Immediately after Flashcard Maker or Quiz Maker responds, and before anything reaches the Verifier, <code>pipeline.py</code> runs its own <strong>shape-filtering</strong> pass — no AI involved, just plain code checking whether what came back is actually usable: is this really a dict with the right keys, are the required fields actually present and non-empty, is <code>correct_index</code> a valid number pointing at a real option, does a field look like it accidentally contains raw JSON instead of a real answer (a known model glitch). Anything that fails this check is thrown away right there — it never gets sent to the Verifier at all.</p>
+      <p>Only what survives shape-filtering moves on to <strong>verification</strong> — the real second AI call, to Groq. The surviving items are numbered and sent in one batch, with a prompt asking Groq to judge each one on two separate questions: is it <em>grounded</em> (actually true according to the grounding text) and is it <em>relevant</em> (actually about the concept it's filed under, not some other true-but-different topic). Groq returns a verdict per item; only the ones marked valid are saved to the database. (The full mechanics of how this check itself is designed — why Groq specifically, what happens if the check fails, the history of why both groundedness <em>and</em> relevance get checked — is covered in full in Section 6.)</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: skip shape-filtering, send everything straight to the Verifier</span>
+        <p><strong>Pros:</strong> one less layer of code to maintain.</p>
+        <p><strong>Cons:</strong> shape-filtering is free and instant — no API call, no cost, no wait. Skipping it means spending a real Groq call (and Section 6 explains Groq's per-minute token budget is genuinely tight) verifying content that was already malformed and was always going to be discarded regardless of what the verifier said about it.</p>
+        <p><strong>What would actually change in the code:</strong> the shape-filter list-comprehensions sitting between each agent call and each <code>verifier.verify_*</code> call in <code>pipeline.py</code> would disappear, and <code>verifier.py</code> would need to become defensive enough to handle genuinely malformed input gracefully instead of assuming it always receives well-formed items.</p>
+      </div>
+
+      <h3>Deduplication across the whole document, not just within one concept</h3>
+      <p>Flashcards are checked for near-duplicates against <em>every</em> flashcard generated so far in the document, not just the ones from the same concept. Two concepts that are closely related can easily produce very similar flashcards (e.g. "innovation" showing up as its own flashcard under two different but related topics) — checking only within one concept wouldn't catch that at all.</p>
+      <p>The check itself is a similarity comparison (not exact-text matching) with a threshold of 0.75 — normalized text (lowercased, punctuation stripped) that's 75% or more similar to something already kept gets rejected as a duplicate. Notably, this same dedup logic is reused, unchanged, by the remediation loop (Section 8) when it adds drill flashcards later — a new drill card gets checked against everything already in the document, not just against other drill cards, so remediation can't quietly reintroduce a card that's nearly identical to one that already exists.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: exact-text duplicate checking instead of similarity-based</span>
+        <p><strong>Pros:</strong> simpler, faster, completely unambiguous — either the strings match or they don't.</p>
+        <p><strong>Cons:</strong> two flashcards asking essentially the same thing in slightly different wording ("What is price elasticity?" vs. "What does price elasticity mean?") would both survive an exact-text check as "different," even though showing a student both is just noise, not two distinct pieces of learning.</p>
+        <p><strong>What would actually change in the code:</strong> <code>pipeline._is_duplicate</code> and its use of <code>difflib.SequenceMatcher</code> would be replaced by a plain <code>==</code> string comparison — less code, but measurably worse at catching the kind of near-duplicate that actually shows up in practice.</p>
+      </div>
+
+      <h3>How the checklist UI actually gets its updates</h3>
+      <p>While "Generate study material" is running, the student watches a checklist of topic names turn green one at a time. That update doesn't come from the UI polling the database or watching for new rows — the Pipeline is handed a simple callback function (<code>progress_cb</code>) when it starts, and calls it directly, by name, at specific points (right after a concept's quiz has been saved: <code>report(f"Completed: {name}")</code>). <code>app.py</code> supplies a function that updates the checklist display; the Pipeline itself has no idea what that function actually does with the message — it just calls it.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: have the UI poll the database for progress instead</span>
+        <p><strong>Pros:</strong> the Pipeline wouldn't need to know or care about progress reporting at all — total separation of concerns.</p>
+        <p><strong>Cons:</strong> polling means picking an interval (too slow feels laggy, too fast wastes work re-querying a database that usually hasn't changed) and still needing a way to know when a concept is "fully done" versus "summary saved but flashcards not yet" from the data alone — extra inference the callback approach avoids entirely by just saying so directly, at the exact moment it's true.</p>
+        <p><strong>What would actually change in the code:</strong> the <code>progress_cb</code> parameter would disappear from every function signature in the Pipeline and the agents, and <code>app.py</code> would instead need a timer-driven loop querying <code>db.list_concepts</code> repeatedly during generation, inferring progress from concept <code>status</code> values instead of being told directly.</p>
+      </div>
+
+      <h3>Why the remediation loop reuses the Pipeline's own dedup code instead of having its own</h3>
+      <p><code>_is_duplicate</code> and <code>_normalize</code> (the similarity-check logic above) are defined in <code>pipeline.py</code> but imported and used by <code>adaptive_loop.py</code> too. A drill flashcard generated during remediation needs to be checked against existing flashcards using <em>exactly</em> the same rule a freshly-generated flashcard is checked against during normal generation — if the two used slightly different logic, a card could be treated as "new" during remediation but would have been rejected as a duplicate during normal generation (or vice versa), an inconsistency with no good justification.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: give the remediation loop its own separate copy of the dedup logic</span>
+        <p><strong>Pros:</strong> the two modules would be fully independent — a change to one could never accidentally affect the other.</p>
+        <p><strong>Cons:</strong> "fully independent" here just means "two copies of the same rule that can silently drift apart" — a future bug fix or threshold tweak applied to one copy and forgotten in the other would reintroduce exactly the inconsistency described above, quietly, with no error to signal it happened.</p>
+        <p><strong>What would actually change in the code:</strong> <code>adaptive_loop.py</code>'s <code>from services.pipeline import _is_duplicate, _normalize</code> import would be replaced with its own separately-defined (and separately-maintained) copies of both functions.</p>
+      </div>
+      <div class="page-nav"><a class="nav-link" data-page="s4">← Section 4</a><a class="nav-link" data-page="s6">Section 6: The verification system →</a></div>
+    </section>
+
+    <section class="page" data-page="s6">
+      <h2><span class="h2-num">6</span> The verification system</h2>
+
+      <p>Two separate quality-control mechanisms exist in this app, and they catch genuinely different things. This section covers both in full: the similarity check that catches <em>repeats</em>, and the Verifier agent that catches <em>wrong or mislabeled</em> content. They're unrelated in <em>how</em> they work (one is plain code with no AI involved, the other is a real second AI model) but both exist for the same underlying reason — don't just trust the first thing generated.</p>
+
+      <h3>How the similarity check actually works</h3>
+      <p>The dedup logic (Section 5) doesn't check whether two flashcards are <em>exactly</em> the same text — it checks how <em>similar</em> they are, using a standard Python tool called <code>difflib.SequenceMatcher</code>. Here's concretely what that means, not just the name of the tool:</p>
+      <p><code>SequenceMatcher</code> takes two pieces of text and finds the longest stretch of characters they have in common, then keeps looking for more matching stretches in what's left on either side of that first match, repeating until there's nothing meaningfully left to match. It adds up the total number of matching characters it found (call that <code>M</code>) and compares that to the combined total length of both pieces of text (call that <code>T</code>). The similarity score is <code>2 × M ÷ T</code> — a number between 0 (nothing in common at all) and 1 (identical text).</p>
+      <p><strong>What "0.75" actually means in practice.</strong> Before comparing, both pieces of text are first normalized — lowercased, and anything that isn't a letter, number, or space is stripped out (so punctuation and capitalization differences never count against similarity). Two normalized flashcard fronts scoring 0.75 or higher are treated as duplicates and the second one is discarded. Concretely: <code>"what is price elasticity"</code> vs. <code>"what does price elasticity mean"</code> share most of their words and letter patterns despite being worded differently, and land comfortably above 0.75 — correctly caught as the same underlying question asked two different ways. <code>"what is price elasticity"</code> vs. <code>"what is supply"</code> share far less (mostly just the generic "what is" opening) and land well below it — correctly kept as two distinct cards.</p>
+      <div class="alt-box">
+        <span class="label">Why 0.75 specifically, and what moving it would actually do</span>
+        <p><strong>A higher threshold (e.g. 0.9)</strong> would require near-exact text matches to count as duplicates — catching only the most blatant repeats, letting through more flashcards that ask essentially the same thing in noticeably different wording. More total flashcards survive, but more of them would feel repetitive to a student reading through the whole set.</p>
+        <p><strong>A lower threshold (e.g. 0.5)</strong> would flag much more loosely related text as "duplicate" — risking rejecting two flashcards that are actually about genuinely different aspects of a topic just because they share a lot of common words (two cards both starting with "Explain how..." about two different mechanisms, for instance). Fewer total flashcards would survive, some of them wrongly discarded.</p>
+        <p><strong>0.75 sits deliberately in between</strong> — high enough to avoid punishing two flashcards for merely sharing a topic and some vocabulary, low enough to actually catch genuine near-duplicates reworded differently. This same threshold, and the same underlying check, is also reused by <code>export_builder.py</code> when it merges the standalone Glossary view (Section 10) — one number, defined once, used everywhere something needs "are these two pieces of text basically the same thing."</p>
+      </div>
+
+      <h3>The Verifier agent, in full</h3>
+      <p>Once something survives shape-filtering (Section 5) — so it's already known to be well-formed — it goes to the Verifier for the check that actually matters: is it <em>true</em>, and is it <em>about the right topic</em>. This is a real second AI call, not a rule-based check.</p>
+      <p><strong>The mechanism.</strong> Every surviving flashcard or quiz question for one concept is numbered and sent to Groq in a single batch, along with the concept's name and its grounding text (Section 5). The prompt asks Groq to judge each numbered item against two separate questions at once:</p>
+      <ol>
+        <li><strong>Grounded</strong> — is this clearly supported by the notes (not invented, not contradicting them)?</li>
+        <li><strong>On-topic</strong> — is this actually about the stated concept, not some different topic that happens to also be true and grounded?</li>
+      </ol>
+      <p>Groq returns one verdict per numbered item (valid or not, plus a short reason), and an item must pass <strong>both</strong> checks to survive — failing either one is enough to get it discarded.</p>
+
+      <h3>What's actually happening underneath that judgment</h3>
+      <p>This is a genuinely different kind of mechanism from the similarity check above, and worth being precise about the difference. The dedup check is a fixed formula — <code>2 × M ÷ T</code> — that produces the exact same number every single time for the same two pieces of text, and you could compute it by hand. <strong>The Groq verification check has no formula at all.</strong> There's no score, no threshold, no calculation happening anywhere. Groq is simply given the notes and the item as plain text in the same request, and asked to output a plain yes/no judgment — "valid": true or false — based on its own trained language understanding, the same way it would answer any other question put to it in plain English.</p>
+      <p><strong>Concretely, what "reading for groundedness" means for a language model:</strong> the notes text and the item being checked both sit in the same context the model reads before answering — there's no separate lookup or search step, no keyword matching happening behind the scenes. The model reads the notes the way it would read any passage, forms an internal understanding of what claims that passage actually supports, then reads the flashcard or quiz item and judges whether its claim is consistent with what it just understood the notes to say. This is the same underlying skill a language model uses for ordinary reading comprehension — "does this statement follow from this passage" — just pointed at fact-checking instead of, say, summarizing.</p>
+      <p><strong>"On-topic" is judged the same way, just comparing against the concept name instead of the notes.</strong> The model reads the item's actual subject matter — what is this flashcard or question fundamentally <em>about</em> — and compares that against the concept name it was given, asking essentially "is what this item is testing the same thing as what this concept name refers to." Both checks are genuinely the same kind of operation: comparing the meaning of two pieces of text and judging whether they line up, in one case against the notes, in the other against a topic label.</p>
+      <div class="gotcha">
+        <span class="label">This means the check is a judgment call, not a guarantee — and it isn't strictly one-item-at-a-time either</span>
+        <p>Because there's no formula, there's no way to audit <em>why</em> Groq decided an item was valid or invalid beyond the short "reason" string it's asked to return — unlike the dedup check, this judgment can't be independently recomputed or double-checked by hand, only trusted or not. It's also worth being honest that all of one concept's items are judged together in a single request, not truly in isolation from each other — the model reads the whole batch of numbered items at once and returns verdicts for all of them together, so in principle its judgment on item 3 is formed in a context that also includes items 1, 2, and 4, even though each verdict is nominally "about" just its own numbered item. This is the real, unavoidable tradeoff of using a second AI model as a check instead of a deterministic rule: it can catch things a formula never could (genuine factual or topical mismatches), but it inherits all of an LLM's usual limitations — it can occasionally be wrong, and asking it twice isn't guaranteed to produce the identical verdict both times.</p>
+      </div>
+
+      <div class="design-note">
+        <span class="label">Why the on-topic check exists at all — a real bug, not a hypothetical</span>
+        <p>Earlier in this project, the Verifier only checked groundedness. That let a real, specific failure slip through: asked to write quiz questions for a concept the notes barely covered (or didn't cover at all — a manually-added concept), the generator would sometimes fall back to writing real, true, well-grounded questions about a <em>different</em> topic the notes covered well instead — questions that were entirely factually correct and genuinely supported by the notes, just filed under the wrong concept's quiz. A pure groundedness check has no way to catch that, because the content genuinely was true and grounded — it just wasn't about what it claimed to be about. Adding the second, independent relevance check specifically closed that gap.</p>
+      </div>
+
+      <h3>Why this runs on Groq, specifically, not Gemini</h3>
+      <p>Covered briefly in Section 2 as a tech-stack choice; the reasoning is worth restating here as a verification-design decision on its own terms. If the same model that wrote a flashcard is also the one asked "is this correct?", a systematic blind spot in how it reasons about the topic is likely to be present both times — it's checking its own instinct against itself. A genuinely different model, from a different company, trained differently, is much less likely to share that exact blind spot. That's the entire justification for spending a second, separate API integration on this rather than just asking Gemini to check its own work with a different prompt.</p>
+
+      <h3>"Fails open" — what happens when the Verifier itself can't run</h3>
+      <p>If the Groq call fails outright (rate limit, network issue, Groq's own service being briefly unavailable), <code>verify_items</code> doesn't crash the generation run or block on retrying indefinitely — it logs a warning and returns an empty result list, which every caller treats as "nothing came back verified, so let the content through unverified" rather than "treat everything as rejected."</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: "fail closed" — if verification can't run, reject everything</span>
+        <p><strong>Pros:</strong> a stricter safety guarantee — nothing unverified ever reaches the student, no exceptions.</p>
+        <p><strong>Cons:</strong> the Verifier is a quality check layered on top of content that already passed shape/type filtering (Section 5) — it's a second opinion, not the only thing standing between the student and completely fabricated content. Treating a temporary Groq outage as a reason to discard an entire concept's already-shape-valid flashcards and quiz (or to make the whole generation run fail) would punish the student for an availability problem on a third-party service that has nothing to do with whether the content itself is actually fine.</p>
+        <p><strong>What would actually change in the code:</strong> the <code>except Exception:</code> block in <code>verify_items</code> that currently logs a warning and returns <code>[]</code> would instead re-raise the error (or return a result that marks everything invalid), and every caller in <code>pipeline.py</code>/<code>adaptive_loop.py</code> would need its own handling for "an entire concept's content generation just failed because a third-party verification service was briefly down" — a much harsher failure mode for a problem that's usually temporary.</p>
+      </div>
+
+      <h3>Why the notes get truncated to 8,000 characters for this specific call</h3>
+      <p>Every other place in this app that sends notes to an AI model truncates to 20,000 characters. The Verifier truncates to a noticeably smaller 8,000. This isn't an oversight — Groq's free tier caps the specific model used here at a fairly tight number of tokens processed per minute, and a single verification call already includes the numbered items being checked <em>plus</em> the notes as context. Keeping the notes slice smaller here specifically is what keeps one verification call from eating too much of that shared per-minute budget on its own, leaving room for the other verification calls that need to happen in the same generation run (recall from Section 4: a typical 8-concept document makes 16 separate Groq calls, two per concept, all competing for that same tight per-minute allowance).</p>
+      <div class="page-nav"><a class="nav-link" data-page="s5">← Section 5</a><a class="nav-link" data-page="s7">Section 7: The PYQ subsystem →</a></div>
+    </section>
+
+    <section class="page" data-page="s7">
+      <h2><span class="h2-num">7</span> The PYQ subsystem</h2>
+
+      <p>This is the single most heavily reworked part of the whole app — the feature that took the most real iteration, dead ends, and evidence-gathering to get right. It's worth walking through not just what the final design is, but what was tried and rejected along the way, because the reasons those attempts failed are as instructive as the final answer.</p>
+
+      <h3>Two distinct jobs, bookending the main pipeline</h3>
+      <p>PYQ Solver does two genuinely separate things, already traced in Section 4: reading the questions off an uploaded paper (extraction — turning a photo or document into a clean list of question text), and writing a model answer to each one (solving). Extraction happens <em>before</em> the main Orchestrator → Summarizer → Flashcard Maker → Verifier → Quiz Maker → Verifier sequence even starts (the extracted question text becomes the "notes" fed into that sequence); solving happens only <em>after</em> that entire sequence finishes, once real concepts exist for answers to be matched against.</p>
+
+      <h3>Marks capture, and why marks beats Depth as the length signal</h3>
+      <p>When a question paper is read, the extractor doesn't just pull out question text — it captures each question's stated marks weight too (parsing something like "(10 marks)" or "[5]" off the page and separating it from the clean question text). This turned out to matter a lot, because Depth alone wasn't a reliable way to decide how long a given answer should be.</p>
+      <p><strong>The concrete evidence.</strong> Two real questions, both genuinely worth 10 marks, were tested side by side under the earlier design. One named four distinct sub-parts (a Macro Market / Micro Market / Macro Industry / Micro Industry framework question) and produced a long, well-developed answer. The other named only two sub-parts ("support your answer using any two of these models") and, under the same 10-mark weight, came out barely a third as long. Same marks, wildly different length — purely because length was being driven by how many parts the question happened to name, not by how much the question was actually worth. Marks weight doesn't have that problem: it's a number stated on the page, independent of how the question happens to be phrased.</p>
+
+      <h3>Three length-control attempts that failed</h3>
+      <p>Getting from "answers are too short" to the current design took three rejected approaches first, each defeated by the same underlying problem:</p>
+      <ul>
+        <li><strong>A raw word-count target</strong> ("write at least 600 words") — the model would satisfy the number with padding, repetition, or generic restatement rather than genuinely writing more substance.</li>
+        <li><strong>A required paragraph count</strong> ("write at least 4 paragraphs") — trivially satisfiable by writing four short, thin paragraphs instead of one thin one; the count went up, the actual depth didn't.</li>
+        <li><strong>A sentences-per-paragraph minimum</strong> ("each paragraph must have at least 4 sentences") — closer, but still just another number for the model to satisfy the letter of without necessarily satisfying the intent; a model can write four short, low-content sentences as easily as four substantive ones.</li>
+      </ul>
+      <p><strong>The pattern underneath all three failures:</strong> a small, fast model (Section 2) can reliably satisfy a <em>count</em> without the human intent behind that count actually being met, because counting is a much easier task for it to game than genuinely reasoning about whether it has said enough.</p>
+
+      <h3>What actually worked: forcing content, not count</h3>
+      <p>The fix that held up under testing was to stop asking for a length at all and instead name the specific <em>content</em> every developed point in a high-mark answer must contain — content the model can't fake without actually engaging with it:</p>
+      <ol>
+        <li>A precise definition of the concept, including what it's typically measured or evaluated against.</li>
+        <li>How it specifically applies here, referencing at least one concrete detail from the actual question or scenario — not a generic restatement.</li>
+        <li>A second, hypothetical or illustrative example beyond the scenario itself.</li>
+        <li>A comparison or contrast with a related, adjacent idea.</li>
+        <li>A specific risk, limitation, or open question relevant to that point.</li>
+        <li>A closing line on why that point matters for the overall outcome.</li>
+      </ol>
+      <p>A model can pad a word count or split one idea into four thin paragraphs; it's much harder to fake "here is a second, different, concrete example" or "here is a genuine contrast with a related idea" without actually producing one. This — combined with the thinking budget described below — is what finally produced answers with real, verifiable depth instead of length that only looked like depth.</p>
+
+      <h3>The marks-to-minimum-points table</h3>
+      <p>How many of those fully-developed points a high-mark answer needs is set directly by marks weight, in brackets, and deliberately does <em>not</em> depend on how many sub-parts the question happens to name:</p>
+      <table>
+        <tr><th>Marks</th><th>Minimum developed points required</th></tr>
+        <tr><td>7-9</td><td>3</td></tr>
+        <tr><td>10-14</td><td>4</td></tr>
+        <tr><td>15+</td><td>5</td></tr>
+      </table>
+      <p>If a question names fewer parts than its marks bracket requires — the "any two models" 10-mark example above only explicitly named two — the model is instructed to derive additional genuinely relevant angles of its own (an additional applicable model, a cause, an underlying mechanism, a further consequence) to reach the required minimum, rather than stopping short because the question's own wording under-specified how many parts to cover. This is exactly what fixed the two-real-10-mark-questions inconsistency described above.</p>
+
+      <h3>Thinking budget</h3>
+      <p>Gemini supports an optional setting that lets it reason internally before committing to its final written answer, instead of writing linearly from the first word and never revising course. This app only turns that on for PYQ answers that actually need real depth (marks 7+, or an unmarked question at Deep dive) — never for the high-volume calls (concept summaries, flashcards, quiz questions across every concept in a document), because reasoning first adds real latency, and for those simpler, high-volume calls that latency isn't worth paying on every single one of the dozens of calls a normal document generates (Section 4's roughly-40-call tally).</p>
+
+      <h3>Solo calls vs. batched calls — and a discovery about prompt placement, not just wording</h3>
+      <p>Short, low-mark questions get batched together (up to 4 per call) into one request, each tagged inline with its own required length. Any question substantial enough to need the content-forcing treatment above is instead solved completely alone, in its own dedicated call, with its own separate, more spacious prompt.</p>
+      <p><strong>Why solo, given batching saves API calls.</strong> The reason isn't just about avoiding a long answer getting cut short by a shared response — it's a genuine, measured discovery about how much weight a model gives an instruction based on <em>where in the prompt it physically sits</em>. The exact same length/depth instruction, tested side by side, produced roughly twice the output when it stood as its own prominent paragraph in a dedicated prompt, compared to being embedded inline inside a numbered multi-question list alongside a marks tag. Same wording, same model, same content requirements — moving it to a more prominent position in the prompt measurably changed how seriously the model treated it. That's why a substantial question gets an entirely separate prompt template, not just a longer allowance within the shared one.</p>
+
+      <h3>A real bug: matching answers back to questions by position, not by trust</h3>
+      <p>Solutions coming back from a solve call are matched to their original question text by their <em>position</em> in the list — first solution to first question, second to second — never by trusting whatever text the model itself echoes back into its own "question" field in the response. This was a deliberate fix for a real, observed bug: when a question was tagged inline with its marks and length instructions (the batched format above), the model sometimes echoed the <em>entire tagged line</em> back — numbering, bracketed instructions and all — into what was supposed to be just the clean question text, polluting what got shown to the student and stored in the database. Matching by position instead of trusting the model's echo makes that entire category of bug impossible, regardless of what the model does with the "question" field.</p>
+
+      <h3>The hint-expansion feature, and the design journey behind its 700-word ceiling</h3>
+      <p>Once an answer exists, "Expand answer" lets a student pull more material out of its "to go further" hints — a genuinely separate follow-up call that appends new content to the existing answer and produces a fresh set of hints for what's still missing. Getting the <em>limit</em> on this right took real back-and-forth, worth walking through because the first two ideas both had real, specific flaws:</p>
+      <ul>
+        <li><strong>First idea: a fixed number of clicks, computed once from the question's starting marks.</strong> A 2-mark question would get more allowed expansions than a question that started at 10 marks, on the reasoning that it had further to climb. This fell apart once expansion length itself became content-driven rather than count-driven (the same lesson from earlier in this section): a single click on a question with unusually rich hints could jump straight past a thousand words, and a fixed click-budget computed in advance has no way to notice that already happened — it would keep offering more rounds regardless of how large the answer had already grown, defeating the entire point of having a ceiling.</li>
+        <li><strong>Fix: check the actual result after every expansion, not a plan made in advance.</strong> The ceiling that actually shipped is much simpler than either previous idea: after every expansion call returns, the code measures the real word count of the resulting answer, in plain code, no AI involved. If it's at or past 700 words, the fresh hints the model returned are discarded outright regardless of what they say — which is what makes the "Expand answer" button disappear on the next render. If it's still under, the button and a new set of hints stay available. Nothing here is decided in advance or trusted to the model's own judgment about when to stop — it's a direct, external measurement taken after the fact.</li>
+      </ul>
+      <p>The 700-word number itself isn't arbitrary — it comes directly from what a genuinely thorough, fully-developed 10-mark answer using the content-forcing approach above actually measured out to during testing, with some headroom added for normal run-to-run variance in how much the model produces for the same prompt.</p>
+      <div class="page-nav"><a class="nav-link" data-page="s6">← Section 6</a><a class="nav-link" data-page="s8">Section 8: The adaptive remediation loop →</a></div>
+    </section>
+
+    <section class="page" data-page="s8">
+      <h2><span class="h2-num">8</span> The adaptive remediation loop</h2>
+
+      <p>Everything up to this point (Sections 4-7) is about the <em>first</em> pass — generating a document's summaries, flashcards, quiz, and PYQ answers once. This section covers what happens after that, when a student actually takes a quiz and does badly on a specific concept. It's a genuinely separate mechanism from the main pipeline, living in its own file (<code>adaptive_loop.py</code>), reusing several of the main pipeline's pieces rather than reinventing them.</p>
+
+      <h3>What actually triggers it</h3>
+      <p>This is not a scan that runs automatically after generation, and it does not look at the whole document at once. It's <strong>reactive and per-concept</strong>: it only fires after a student has taken a quiz on a specific concept and submitted answers, and only for that one concept.</p>
+      <p><strong>The exact condition.</strong> A concept is flagged "weak" only when <em>both</em> of these hold at once: the student got at least 2 questions wrong on it, <em>and</em> at least half of the questions they answered on it were wrong. Neither number alone is a reliable signal — a flat "2 wrong" would flag a student who answered 10 questions and got 8 right just as harshly as one who answered 2 and got both wrong, and a flat percentage alone breaks down at very low question counts (getting the single question you answered wrong reads as "100% wrong," which isn't meaningful evidence of a real gap). Requiring both together is what keeps the trigger from firing on noise.</p>
+      <p>When one or more concepts meet that bar, the UI shows a "Fix weak topics now" button rather than remediating silently in the background — the student sees which concepts were flagged and chooses to spend the extra generation time on them, instead of it happening automatically without their say.</p>
+
+      <div class="alt-box">
+        <span class="label">Alternative not picked: an automatic quality pass over the whole document right after generation</span>
+        <p><strong>Pros:</strong> would catch weak coverage immediately, without needing to wait for a student to actually struggle on a quiz first.</p>
+        <p><strong>Cons:</strong> there's no reliable signal for "weak" until a student has actually attempted questions on a concept — before that, every concept looks the same (a summary, some flashcards, a quiz), and there's no evidence yet of which ones are actually hard to grasp <em>for this specific student</em>. Weakness here is defined by a real person's real wrong answers, not by anything inspectable in the generated content itself.</p>
+        <p><strong>What would actually change in the code:</strong> there'd need to be some other quality signal computed from the content alone (verification failure rate per concept, maybe, or flashcard count falling short of the requested number) to decide what counts as "weak" without quiz data — a fundamentally different, and much less trustworthy, definition of the problem being solved.</p>
+      </div>
+
+      <h3>What one remediation round actually does, step by step</h3>
+      <p>Once triggered for a concept, <code>run_remediation</code> runs four steps in sequence, all for that one concept only:</p>
+      <ol>
+        <li><strong>Re-explain.</strong> The Summarizer agent is called again, but not from a blank slate — it's given the concept's original summary (or, on a later attempt, the most recent remediation's summary) plus, if the student just got questions wrong, the specific misconception notes attached to those wrong answers. This lets the new explanation target the actual gap that shows up in this attempt, rather than generating a generic "different angle" on the same material blind. Critically, this new explanation is stored as its own separate database row, not overwritten on top of the original summary — both stay visible, each labeled by attempt number, so a student (or a professor) can see the concept's remediation history rather than just its final state.</li>
+        <li><strong>Drill flashcards.</strong> The Flashcard Maker is called again for just this concept, grounded in the notes <em>plus</em> the freshly-generated re-explanation (the same grounding-text pattern from Section 5) — so a drill card can draw on ground truth the original notes never stated, if the re-explanation is what actually made the idea click. The existing flashcards for this concept are passed in explicitly so the model knows what's already been asked and can genuinely produce new angles instead of near-restatements.</li>
+        <li><strong>Reschedule for review.</strong> This concept's existing flashcards are pushed back to the earliest position in the spaced-repetition schedule ("box 1"), the same review-scheduling mechanism used elsewhere in the app — a concept the student just got wrong is due for review again soon, not left on whatever later schedule it had drifted to before the wrong answers.</li>
+        <li><strong>Follow-up quiz.</strong> The Quiz Maker is called again for just this concept, on the same combined grounding text as the drill flashcards, producing a fresh set of questions the student can retake to show the gap has actually closed.</li>
+      </ol>
+
+      <h3>Reuse, not reimplementation, of the two-layer defense from Sections 5 and 6</h3>
+      <p>Remediated content isn't treated as a special, lower-scrutiny case. The drill flashcards go through <em>exactly</em> the same shape-filtering (well-formed front/back text, not a stray JSON blob) as first-pass flashcards, then the same real Verifier call checking groundedness and on-topic relevance, before being kept. The follow-up quiz questions go through the same shape check (a real question, a real options list, a valid correct-index) and the same Verifier call. Nothing about being a "second attempt" earns content a pass on the checks that first-pass content has to clear.</p>
+
+      <h3>Reuse of the dedup logic from Section 6 — and why it checks against <em>everything</em>, not just this concept</h3>
+      <p>New drill cards are run through the identical similarity check from Section 6 — the same <code>2 × M ÷ T</code> formula, the same 0.75 threshold — via the exact same underlying function the main pipeline uses, imported directly rather than copied or reimplemented. The one deliberate difference: a drill card is compared for duplicates against <em>every</em> flashcard already in the whole document, not just the ones belonging to this concept. That's a small but intentional choice — a re-explanation drawing on fresh grounding text could plausibly produce a card that overlaps with something already covering a related idea elsewhere in the document, not just within this one concept's existing cards, so the dedup check is scoped to catch that too.</p>
+
+      <h3>The stopping condition — a hard cap, then an honest handoff</h3>
+      <p>Each concept tracks its own attempt count, and remediation is capped at <strong>3 attempts</strong>. This isn't a diminishing-returns heuristic trying to detect when progress has stalled — it's a flat, simple ceiling, on purpose: there's no reliable automated way to judge from the generated content alone whether a fourth AI-written explanation would actually help a student who hasn't grasped a concept after three genuinely different attempts, so the app doesn't pretend it can measure that and keep looping.</p>
+      <p>Once the cap is reached, the app does one more useful thing before giving up: it makes a single dedicated Gemini call asking, in effect, "does this concept depend on some simpler, more foundational idea also present in these notes?" If the model identifies a plausible prerequisite the student hasn't been explicitly taught yet, that's surfaced to the student as a specific, actionable suggestion (and the concept is flagged rather than silently left as "still learning"). If no clear prerequisite is found, the concept is flagged with an honest message recommending the student fall back to a human resource — their instructor, a textbook, a study group — rather than the app continuing to throw more AI-generated text at a gap it has already tried three times to close.</p>
+      <div class="gotcha">
+        <span class="label">This handoff is a real, deliberate limit on what the app claims to do</span>
+        <p>The app never claims that three attempts will fix any given misunderstanding, and it isn't trying to. Some gaps genuinely need a human explaining things a different way, or noticing something about how a specific student is thinking that a re-explanation prompt has no way to observe. The cap exists specifically so the app says that honestly at a known point, instead of generating a fourth, fifth, sixth explanation indefinitely on the unfounded hope that eventually one will land.</p>
+      </div>
+
+      <div class="page-nav"><a class="nav-link" data-page="s7">← Section 7</a><a class="nav-link" data-page="s9">Section 9: The data model →</a></div>
+    </section>
+
+    <section class="page" data-page="s9">
+      <h2><span class="h2-num">9</span> The data model</h2>
+
+      <p>Everything the pipeline generates and every quiz attempt a student makes ends up in one local SQLite file (<code>data/studymate.db</code>). This section walks through the seven tables that make up the schema, why each one is shaped the way it is, and why SQLite specifically was the right tool for storing all of it.</p>
+
+      <h3>The seven tables, as a dependency tree</h3>
+      <p>Rather than list the tables flat, it's clearer to see them as a tree rooted at one document:</p>
+      <ul>
+        <li><strong><code>documents</code></strong> — one row per uploaded notes-set or PYQ paper. Stores the raw uploaded text itself (<code>raw_text</code>), plus the two settings chosen once up front and never changed mid-run (Section 4): <code>explanation_style</code> and <code>depth_level</code>.</li>
+        <li><strong><code>concepts</code></strong> — one row per topic within a document, referencing <code>documents.id</code>. This is the real unit of work everywhere else in the schema hangs off of.
+          <ul style="margin-top:8px;">
+            <li><strong><code>flashcards</code></strong> — reference <code>concepts.id</code>. One row per card.</li>
+            <li><strong><code>quiz_questions</code></strong> — reference <code>concepts.id</code>. One row per question, with <code>options</code> and <code>distractor_notes</code> (the misconception-per-wrong-option map from Section 6) stored as JSON text inside a TEXT column, not as their own tables.</li>
+            <li><strong><code>concept_remediations</code></strong> — reference <code>concepts.id</code>. One row per remediation attempt's re-explanation (Section 8).</li>
+            <li><strong><code>quiz_attempts</code></strong> — reference <em>both</em> <code>quiz_questions.id</code> and <code>concepts.id</code> directly (a small deliberate denormalization, covered below). One row per single answer a student submits.</li>
+          </ul>
+        </li>
+        <li><strong><code>pyq_solutions</code></strong> — references <code>documents.id</code> directly, sitting <em>outside</em> the concept tree entirely (also covered below, with the reasoning).</li>
+      </ul>
+      <p>Why <code>options</code> and <code>distractor_notes</code> are JSON-in-a-column rather than their own tables (an <code>options</code> table with a foreign key back to the question, say): a quiz question's options are never queried, filtered, or updated independently of the question itself — they're always read and written as one unit, alongside the question they belong to. A separate table buys relational flexibility (querying "which options exist across all questions") that this app never needs, at the cost of an extra join on every single quiz read. Storing them as a JSON blob in one column is the simpler choice that exactly matches how the data is actually used.</p>
+
+      <h3><code>concepts.source</code>: <code>auto</code> vs. <code>manual</code></h3>
+      <p>A concept row can come from two places — extracted automatically from the uploaded notes during the main pipeline run, or added manually by the student afterward (a topic they know is on the syllabus but that the notes didn't cover). This single text field is the entire mechanism that makes manually-added concepts work at all: nothing downstream — flashcard generation, quiz generation, verification, remediation — branches on this field or treats a manual concept specially. They all just call the same functions with whatever grounding text is available (Section 5's grounding-text pattern: notes plus the concept's own generated summary), and for a manual concept where the notes say nothing, that pattern is what supplies real grounding anyway, since the concept's own summary still gets generated and stored regardless of where the concept came from.</p>
+
+      <h3><code>concepts.status</code>: a small lifecycle state machine</h3>
+      <p>Each concept moves through four states over its lifetime: <strong>unseen</strong> (generated, not yet quizzed) → <strong>learning</strong> (the student has taken at least one quiz attempt, possibly been through remediation) → either <strong>cleared</strong> (the student answered correctly and the concept is considered understood) or <strong>flagged</strong> (Section 8's remediation cap was reached, or a prerequisite gap was surfaced, without the concept clearing). This status field is what drives what the UI shows for a concept — whether to offer a quiz, show a "weak topic" prompt, or show the honest handoff message — and Section 8's <code>run_remediation</code> / <code>clear_concept_if_correct</code> functions are the only things that ever move a concept out of <code>learning</code>.</p>
+
+      <h3>Spaced repetition: <code>box_level</code> and <code>next_review_at</code></h3>
+      <p>Flashcards use a Leitner-system schedule — a well-known spaced-repetition idea where a card lives in one of several numbered "boxes," and which box it's in decides how soon it's due for review again. Every new card starts in box 1. A correct review moves it up one box (capped at box 5); an incorrect one drops it straight back to box 1, regardless of what box it was in before. Each box maps to a fixed number of days until the next review:</p>
+      <table>
+        <tr><th>Box</th><th>Days until next review</th></tr>
+        <tr><td>1</td><td>0 (due immediately)</td></tr>
+        <tr><td>2</td><td>1</td></tr>
+        <tr><td>3</td><td>3</td></tr>
+        <tr><td>4</td><td>7</td></tr>
+        <tr><td>5</td><td>14</td></tr>
+      </table>
+      <p>A card the student keeps getting right drifts further and further out (up to a two-week gap), spending review time on material that's actually shaky rather than re-showing something already mastered on the same fixed daily schedule as everything else. This is also the exact mechanism Section 8 leans on: when a concept is flagged weak, every one of its flashcards is pushed straight back to box 1 (<code>reschedule_flashcards_for_concept(concept_id, correct=False)</code>) — due for review immediately, on the reasoning that a concept the student just got wrong on a quiz needs its flashcards revisited soon, not whenever their existing box happened to schedule them next.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: no spacing, just "review daily" or "review in order"</span>
+        <p><strong>Pros:</strong> far simpler — no <code>box_level</code> column, no interval table, no reschedule logic; every card just shows up on some fixed rotation regardless of how well the student already knows it.</p>
+        <p><strong>Cons:</strong> wastes a student's review time on cards they've already clearly mastered, at exactly the same rate as cards they keep getting wrong — the entire point of spaced repetition (a genuinely well-evidenced learning technique) is to spend more review time where it's actually needed and less where it isn't.</p>
+        <p><strong>What would actually change in the code:</strong> the <code>flashcards</code> table would drop <code>box_level</code> and <code>next_review_at</code> entirely, <code>reschedule_flashcards_for_concept</code> and <code>LEITNER_INTERVALS_DAYS</code> would disappear, and whatever UI shows "cards due for review" would instead just show all cards, or all cards in creation order — a noticeably less useful study tool for the same amount of generated content.</p>
+      </div>
+
+      <h3>Why remediation history is its own table, not an overwrite</h3>
+      <p><code>concept_remediations</code> exists specifically so that re-explaining a concept (Section 8, step 1) never destroys the original explanation — each attempt's re-explanation is inserted as a new row, tagged with its attempt number, and the original <code>concepts.summary</code> is left untouched underneath all of them.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: just overwrite <code>concepts.summary</code> on each remediation</span>
+        <p><strong>Pros:</strong> one fewer table, simpler reads — there's only ever one summary to fetch per concept, no need to pick "the latest one."</p>
+        <p><strong>Cons:</strong> loses the concept's actual learning history. Being able to show a student (or a professor evaluating the project) "here's the original explanation, here's attempt 2, here's attempt 3, and here's what changed each time" is a genuinely useful, honest record of what the adaptive loop actually did — an overwrite-in-place design would silently discard that the moment a second attempt happened, leaving only the most recent explanation with no trace that earlier ones ever existed.</p>
+        <p><strong>What would actually change in the code:</strong> <code>add_concept_remediation</code> would become an <code>UPDATE concepts SET summary=? WHERE id=?</code> instead of an <code>INSERT</code> into a separate table, and the <code>concept_remediations</code> table and every place that reads "prior remediations" (Section 8's <code>run_remediation</code>, which pulls the most recent one to ground the next re-explanation) would need a different way to access what the previous attempt actually said.</p>
+      </div>
+
+      <h3><code>flashcards.source</code> / <code>attempt</code>, and what <code>quiz_attempts</code> is actually for</h3>
+      <p><code>flashcards.source</code> (<code>generated</code> vs. <code>drill</code>) and <code>flashcards.attempt</code> (0 for an original card, the remediation attempt number for a drill card) together record exactly where every flashcard came from — the main pipeline's first pass, or which specific remediation round produced it — without needing a separate table just to track flashcard provenance.</p>
+      <p><code>quiz_attempts</code> is the raw evidence table everything in Section 8 is actually computed from. Every time a student answers one quiz question, one row is inserted recording which question, which concept, which option they picked, and whether it was correct. Section 8's <code>is_weak</code> check — "at least 2 wrong <em>and</em> at least half of answered questions wrong" — is computed directly by counting rows in this table per concept, not from some running tally kept elsewhere; the wrong/answered counts the UI shows and the remediation trigger reads off of are both derived fresh from this same table each time. Keeping every individual attempt as its own row (rather than, say, just a running "times correct / times wrong" counter on the concept) is also what lets the misconception notes get pulled back out for a specific wrong attempt when triggering remediation (Section 8's <code>wrong_misconceptions</code> list) — a running counter would have thrown that detail away the moment it was rolled up.</p>
+
+      <h3>Why SQLite, specifically, for this project</h3>
+      <p>Briefly touched in Section 2 as a tech-stack line item; here's the fuller reasoning as a data-model decision on its own terms. SQLite stores the entire database as one ordinary file on disk, needs no separate server process running, and Python's standard library talks to it directly (<code>import sqlite3</code>) with no extra service to install, configure, or keep alive. For a single-user MBA coursework project that runs locally and was never going to serve concurrent users across a network, that's a very close match to the actual requirements — the data still needs real structure (foreign keys, typed columns, the ability to query "all flashcards due for review across a document" efficiently) that a much simpler option like flat JSON files on disk wouldn't give for free, but it doesn't need anything close to a client-server database's concurrency handling.</p>
+      <div class="alt-box">
+        <span class="label">Realistic alternatives, and why each was passed over</span>
+        <p><strong>Flat JSON files</strong> (one file per document, holding all its concepts/cards/questions nested inside) — the simplest possible option, and genuinely tempting for a small project. Rejected because several real operations get much harder without a real query layer: finding "all flashcards due for review today across every document," or "every quiz attempt for this concept," would mean loading and manually scanning whole JSON structures in Python instead of a single indexed SQL query — workable at a handful of documents, but a noticeably worse fit even at the scale a semester of coursework realistically produces.</p>
+        <p><strong>A client-server database</strong> (PostgreSQL, MySQL) — real concurrency handling, real production scalability, the kind of database an actual multi-user product would need. Rejected because it needs a separate server process running somewhere, real setup (installing the server, managing credentials, connection pooling), and buys concurrent-multi-user correctness this project has no user for — a single student, running the app locally, is never writing to the database from two places at once. All of that operational weight would be pure overhead here.</p>
+        <p><strong>What would actually change in the code:</strong> against Postgres, <code>services/db.py</code> would swap <code>sqlite3.connect(DB_PATH)</code> for a connection string and a real client library (<code>psycopg2</code> or similar), <code>get_conn()</code> would need real connection pooling instead of opening and closing a lightweight file connection per call the way it does now, and the app would need a running database server as a deployment dependency it doesn't have today. Against flat JSON, every function in <code>db.py</code> that currently runs a <code>SELECT</code> with a <code>WHERE</code>/<code>JOIN</code> would instead need to load a file (or several) into memory and filter with Python list comprehensions by hand.</p>
+      </div>
+
+      <h3>Schema evolution: <code>_migrate()</code> instead of a migrations framework</h3>
+      <p>The schema has changed more than once since the project started (adding <code>explanation_style</code>/<code>depth_level</code> to <code>documents</code>, adding <code>source</code>/<code>attempt</code> to <code>flashcards</code>, for instance), and a developer's already-existing local <code>studymate.db</code> file needs to keep working after each change rather than needing to be deleted and recreated. <code>init_db()</code> runs the full <code>CREATE TABLE IF NOT EXISTS</code> schema unconditionally (a no-op against a database that already has those tables), then calls <code>_migrate()</code>, which checks each table's actual current columns via <code>PRAGMA table_info</code> and runs an <code>ALTER TABLE ... ADD COLUMN</code> only for whichever new columns aren't already there.</p>
+      <div class="alt-box">
+        <span class="label">Alternative not picked: a real migrations framework (Alembic or similar)</span>
+        <p><strong>Pros:</strong> versioned, reversible migrations, a real history of every schema change as its own file, the standard approach for a production codebase with a team of developers and real deployed databases to keep in sync.</p>
+        <p><strong>Cons:</strong> genuinely disproportionate tooling for a project with one schema, one local SQLite file per developer machine, and no deployed database anyone needs to keep in sync with anyone else's. The hand-written additive-column check does exactly the one thing this project actually needs — don't break an existing local dev database when a column gets added — in about a dozen lines, with no new dependency and nothing to learn or configure.</p>
+        <p><strong>What would actually change in the code:</strong> <code>_migrate()</code> and the inline <code>PRAGMA table_info</code> checks would be replaced by a directory of numbered migration scripts and a library managing which ones have already run against a given database — real infrastructure for a problem this project's actual scale doesn't have.</p>
+      </div>
+
+      <h3><code>pyq_solutions</code>: deliberately outside the concept tree</h3>
+      <p>Every other generated content table hangs off <code>concepts.id</code> with a real foreign key. <code>pyq_solutions</code> doesn't — it references <code>documents.id</code> directly, and stores <code>matched_concept</code> as a plain text column, not a foreign key to an actual concept row. This is a direct consequence of how PYQ Solver actually produces that field (Section 7): the model is asked to name the closest-matching concept from the list it's given, as free text in its JSON response, not to return a concept ID it's confident is correct. Treating that as a real foreign key would claim a stronger guarantee than actually exists — that the label is guaranteed to correspond to some real row in <code>concepts</code> — when it's really just the model's best-effort text label, useful for display ("this answer relates to: Price Elasticity") but not something safe to build a strict relational constraint on top of.</p>
+      <div class="gotcha">
+        <span class="label">A soft link, not a hard one — and that's the honest choice</span>
+        <p>If <code>matched_concept</code> were a real foreign key, a PYQ solution whose model-named concept didn't exactly match any real concept row (different capitalization, a slightly different phrasing) would either fail to insert outright or need extra normalization/fuzzy-matching logic just to satisfy the constraint. Keeping it as plain text sidesteps that entirely, at the honest cost that the schema itself can't guarantee <code>matched_concept</code> actually refers to something real — any code that wants to cross-reference a PYQ solution back to a concept has to do its own best-effort text comparison, not a guaranteed join.</p>
+      </div>
+
+      <div class="page-nav"><a class="nav-link" data-page="s8">← Section 8</a><a class="nav-link" data-page="s10">Section 10: The export system →</a></div>
+    </section>
+
+    <section class="page" data-page="s10">
+      <h2><span class="h2-num">10</span> The export system</h2>
+
+      <p>Everything so far lives inside the running app — Streamlit, the SQLite file, an active Python process. This section covers the one part of the app deliberately designed to leave all of that behind: the "Download as HTML" / "Download as PDF" buttons, which turn a document into a single file a student can save, email, or open on a completely different machine with nothing installed.</p>
+
+      <h3>What "export" actually means here: a fully self-contained artifact</h3>
+      <p>The exported HTML file isn't a link back into the running app, and it isn't a folder of separate assets (a stylesheet here, a script there, images elsewhere) — it's <em>one file</em>, with its CSS and JavaScript embedded directly inside it, that works completely offline. Open it by double-clicking, no server, no internet connection, no Python, no dependency on the SQLite database it came from still existing. This matters specifically because the running app itself has none of those properties: it needs Streamlit running, a live local database file, and effectively one machine — none of which a student can hand to a study group or open on a phone that never had the project installed.</p>
+
+      <h3>One shared assembly step, two different renders</h3>
+      <p><code>export_builder.py</code>'s <code>_build_context(document_id)</code> is the single place that decides <em>what</em> goes into an export — every concept (with its summary and full remediation history), every flashcard, every quiz question, every PYQ solution, and the merged glossary (below). Both <code>build_html</code> and <code>build_pdf</code> call this exact same function and get back the exact same data; they only differ in which template they hand that data to and how they render it. This is a deliberate one-source-of-truth choice: if the HTML export and the PDF export instead each independently queried the database for what to include, they could quietly drift apart over time (one export format gaining a new field, the other not), with no single place responsible for "what does a study pack actually contain."</p>
+
+      <h3>Why two export formats instead of one</h3>
+      <p>An interactive HTML page and a static PDF solve genuinely different problems, not the same problem twice:</p>
+      <div class="alt-box">
+        <span class="label">HTML export vs. PDF export vs. picking just one</span>
+        <p><strong>HTML only:</strong> keeps the interactivity — flip-to-reveal flashcards, a self-graded quiz, theme and font controls — but can't be printed cleanly (click-to-reveal content is invisible on paper) and isn't the natural format for something a student wants to physically annotate or bring into an exam-prep session away from a screen.</p>
+        <p><strong>PDF only:</strong> prints cleanly and works anywhere a PDF viewer exists (which is closer to universal than "a modern browser with JavaScript enabled"), but loses everything interactive — no flip animation, no self-quiz that grades itself, nothing dynamic. Every flashcard and quiz answer has to sit in plain view directly on the page.</p>
+        <p><strong>Both, as built:</strong> the interactive study-and-review experience lives in the HTML export; the plain, printable answer key lives in the PDF export. Neither format is asked to do the job it's structurally bad at.</p>
+      </div>
+
+      <h3>Jinja2's role: one-shot templating, not a live UI</h3>
+      <p>Both templates are rendered with Jinja2 — <code>Template(...).render(...)</code> takes the Python dict from <code>_build_context</code> and substitutes it into the HTML template's <code>{{ }}</code> placeholders and <code>{% for %}</code> loops <em>once</em>, producing a finished, static block of HTML text that gets written straight to the download. This is worth contrasting directly with how the app itself is built: Streamlit (Section 11 covers this in full) re-executes the entire Python script from top to bottom on every single interaction, deciding what to show fresh each time. Jinja2 here does the opposite — it renders exactly once, at the moment "Download" is clicked, and everything after that (which page is showing, what theme is active, which quiz answer was picked) is handled entirely by the small hand-written JavaScript embedded in the file itself, with no Python involved at all once the download happens. An exported file has no Python runtime attached to it anymore — it can't rerun a script, so all of its interactivity has to be self-sufficient client-side JS, not more Streamlit.</p>
+
+      <h3>The interactive HTML export's own mini front-end</h3>
+      <p>The HTML export bundles a genuinely small but complete front-end of its own, entirely inside <code>&lt;script&gt;</code> tags in the same file:</p>
+      <ul>
+        <li><strong>Multi-page navigation</strong> — the exact same <code>data-page</code> attribute + <code>.page.active</code> CSS pattern this very architecture document uses (Section 4): clicking a nav link removes <code>.active</code> from every page and nav link, adds it to the clicked one, and scrolls to top. This app's own study-pack export was, in fact, the direct model this documentation site's own page-switching was copied from.</li>
+        <li><strong>Flip-to-reveal flashcards</strong> — each card is a plain <code>div</code> with a front face and a back face stacked via CSS, and a single <code>onclick="this.classList.toggle('flipped')"</code> toggles which face shows. No JS framework, no state management — the class toggle and the CSS are the entire mechanism.</li>
+        <li><strong>A self-graded, client-side-only quiz</strong> — every quiz question, its options, and its correct index are serialized once into a plain JSON blob (<code>QUIZ_DATA</code>) embedded directly in the page source. A small <code>renderQuiz()</code> function builds the quiz UI from that array and grades it entirely in the browser when submitted — no server call, no database write, because there's no server to call once this file is downloaded. A score the student gets from this exported quiz never makes it back into the app's own progress tracking (Section 9's <code>quiz_attempts</code> table) — it's a genuinely separate, disconnected copy of the quiz, useful for review but not wired into the adaptive loop.</li>
+        <li><strong>Theme and reading-comfort controls</strong> — the same theme-switching pattern as this documentation site, plus sliders for font size and reading-column width, each applying a CSS custom property live as the slider moves.</li>
+      </ul>
+      <p><strong>Why every one of those settings is saved to <code>localStorage</code>, specifically.</strong> This file might be opened on a machine with no account system, no server, and — once downloaded — potentially no connection back to anything at all (a student could email it to themselves, or carry it on a USB drive). <code>localStorage</code> is the one persistence mechanism that needs absolutely nothing beyond the browser itself: no login, no network call, no server-side storage to provision. A returning visit to the same file on the same browser reloads the last theme and slider settings automatically, entirely because the browser remembered them locally — which is exactly the right amount of persistence for a file with no backend behind it at all.</p>
+
+      <h3>The glossary merge, reusing Section 6's exact similarity check</h3>
+      <p>Every concept keeps its own key terms in its own summary — including terms another concept also happens to use, which is normal (real topics genuinely share vocabulary) and not treated as a problem anywhere else in the app. The standalone Glossary view in the export is the one place that would actually look broken if the same term showed up twice, so <code>_merge_glossary_terms</code> runs a dedup pass <em>only</em> at export-assembly time, using the identical mechanism from Section 6: normalize each term (lowercase, strip non-alphanumerics), then compare with the same <code>SequenceMatcher</code> ratio at the same 0.75 threshold used for flashcard dedup — reusing the number and the formula rather than inventing a second one. This is a deliberate assembly-time-only fix: nothing about how concepts store their own key terms changes, only how the export flattens them into one shared list.</p>
+
+      <h3>Why the PDF reveals every answer directly — not a "PDF-ified" copy of the HTML template</h3>
+      <p>The PDF template is a genuinely separate file (<code>pdf_template.html</code>), not the interactive template rendered a different way. A printed page has no clicks, no hover, no JavaScript execution at all — "click to flip" simply cannot exist on paper. Rather than ship a broken, inert copy of the flip-card markup, the PDF template shows flashcard fronts and backs side by side in a plain table, and every quiz question with its correct answer printed directly beneath it, clearly labeled ("answers revealed") right in the export's own subtitle so there's no ambiguity about why nothing needs to be clicked.</p>
+
+      <h3><code>xhtml2pdf</code> as the PDF engine — the mechanism, and its real limitation</h3>
+      <p>Touched briefly in Section 2 as a tech-stack line; here's the actual mechanism. <code>xhtml2pdf</code>'s <code>pisa.CreatePDF</code> takes a plain HTML+CSS string — the same kind of string Jinja2 just rendered — and converts it directly into PDF bytes, entirely within the Python process, with no headless browser, no external binary, and no separate rendering service involved.</p>
+      <div class="alt-box">
+        <span class="label">The real tradeoff: a much smaller CSS subset than an actual browser</span>
+        <p><strong>What this buys:</strong> a pure-Python dependency (installed like any other pip package), no external Chrome/Chromium binary to bundle or manage, and a fast, simple, in-process conversion — well suited to a coursework project that shouldn't need a browser automation stack just to produce a PDF.</p>
+        <p><strong>What it costs:</strong> <code>xhtml2pdf</code> only understands a meaningfully smaller slice of CSS than a real browser engine does — modern layout features (flexbox, grid, many CSS custom properties) aren't reliably supported. This is exactly why <code>pdf_template.html</code> is written as its own separate, deliberately simple template using plain tables and basic block layout, rather than trying to reuse the interactive HTML template's richer CSS and hoping <code>xhtml2pdf</code> renders it correctly — the PDF template is written <em>for</em> this specific renderer's real capabilities, not adapted after the fact from something else.</p>
+        <p><strong>What would actually change in the code:</strong> the alternative with full modern CSS support is a headless-browser-based PDF tool (Playwright or a headless Chrome invocation) rendering the interactive HTML template itself and printing that to PDF — which would let the PDF and HTML templates converge into one file, at the cost of bundling and managing an entire browser binary as a project dependency, for a coursework app that doesn't need that level of fidelity.</p>
+      </div>
+
+      <div class="page-nav"><a class="nav-link" data-page="s9">← Section 9</a><a class="nav-link" data-page="s11">Section 11: The Streamlit interaction model →</a></div>
+    </section>
+
+    <section class="page" data-page="s11">
+      <h2><span class="h2-num">11</span> The Streamlit interaction model</h2>
+
+      <p>Several things earlier in this document were explained by pointing forward to "Streamlit's execution model, covered fully in Section 11" — why the pipeline is fully sequential (Section 4), why generation is one single blocking step (Section 4), why the busy overlay exists at all. This section is where all of that actually gets explained, from the ground up: what Streamlit fundamentally is, and every consequence that follows from it mechanically.</p>
+
+      <h3>The one fact everything else in this section follows from</h3>
+      <p><strong>What it is.</strong> Streamlit is not a typical web framework with routes, request handlers, and a server-side app object that persists between requests. A Streamlit app is a single Python script (<code>app.py</code>, in this project) that Streamlit re-executes <em>from the very first line to the very last line, every single time</em> something happens in the browser — a button click, typing into a text box, selecting a dropdown option, or an explicit <code>st.rerun()</code> call from the code itself. This full top-to-bottom re-execution is called a "rerun," and it is the single fundamental fact Streamlit is built around.</p>
+      <p><strong>Why it works this way.</strong> Streamlit's whole pitch is that a developer writes plain, linear, top-to-bottom Python — no callback functions to wire up for every widget, no explicit "update this part of the page" logic to write by hand. The tradeoff for that simplicity is that the framework achieves it by just running the entire script over again and using each rerun's output to redraw the page. There's no partial-update model by default — the entire script's control flow is what decides what widgets and content exist on a given rerun.</p>
+      <p><strong>What this means concretely.</strong> Every plain Python variable declared in <code>app.py</code> — a list, a counter, a flag, the result of an earlier calculation — is thrown away and rebuilt from scratch on every rerun, exactly as if the script had never run before. <strong>Nothing survives a rerun except what is explicitly stored in <code>st.session_state</code></strong> — a dictionary-like object Streamlit itself keeps alive across reruns, tied to one browser tab's session. If a value needs to persist across an interaction — which document is currently selected, whether a long-running generation is in progress, what a student answered on a quiz question before submitting — it has to live in <code>st.session_state</code>, on purpose, or it's gone the instant the next rerun starts.</p>
+
+      <h3>Why the pipeline is fully sequential — the actual mechanism, not just the conclusion</h3>
+      <p>Section 4 already stated that nothing in this app runs in parallel and pointed here for the reason. Here is the actual mechanism: a rerun-driven script has no natural, safe place to keep a background thread or an async task alive <em>across</em> reruns without deliberately-built extra machinery (a thread-safe queue, a polling loop checking a shared variable, careful handling of Streamlit's own threading model) — none of which this app has, because it was never asked to run two things at once. A single <code>st.spinner(...)</code> block wrapping a call to <code>pipeline.generate_study_material(...)</code> simply runs that Python function to completion, line by line, exactly like calling any ordinary function — there is no framework-provided way to fire off "start the Summarizer and the Flashcard Maker at the same time" from inside a rerun and have the script continue past that point before both finish. The single-threaded, one-agent-at-a-time pipeline design from Section 4 is therefore not just a design preference — it's the natural shape of what a plain function call inside one Streamlit rerun can actually do without extra infrastructure this project has no need for.</p>
+
+      <h3>The click → flag → rerun → do-the-work pattern</h3>
+      <p>"Generate study material," "Solve question paper," and "Fix weak topics now" all use the identical four-step pattern, and it's worth walking through exactly why each step exists rather than just what it does. Concretely, from the Generate button (<code>app.py:353-359</code>):</p>
+      <ol>
+        <li><code>gen_clicked = st.button(...)</code> — <code>st.button</code> returns <code>True</code> only on the exact rerun where it was clicked. On every other rerun (including the very next one Streamlit triggers), it returns <code>False</code> again — a button's "clicked-ness" is not persistent state, it's a one-shot signal for a single rerun.</li>
+        <li><code>if gen_clicked: st.session_state.generating_notes = True</code> — because that one-shot signal is about to disappear on the next rerun, it's immediately converted into a durable flag in <code>session_state</code>, which — unlike the button's return value — will still read <code>True</code> on every subsequent rerun until something explicitly sets it back to <code>False</code>.</li>
+        <li><code>st.rerun()</code> — called immediately, <em>before any of the actual slow work happens</em>. This forces Streamlit to immediately restart the script from the top rather than falling through into the generation call on the same rerun that detected the click.</li>
+        <li>On <em>that next</em> rerun, the script reaches <code>if st.session_state.generating_notes:</code>, sees it's <code>True</code>, and only <em>then</em> does the real work — parsing files, calling the pipeline, writing to the database.</li>
+      </ol>
+      <p><strong>Why split the click and the work across two separate reruns at all — why not just do the work directly inside the same <code>if gen_clicked:</code> block?</strong> Because Streamlit doesn't repaint the browser until the <em>entire</em> script finishes running top to bottom. If the actual multi-second pipeline call happened directly inside the same rerun that detected the click, the button would stay visually unclicked/unchanged in the browser for the whole duration of the call — no spinner, no disabled state, nothing — because none of that visual feedback gets sent to the browser until the whole script returns. Calling <code>st.rerun()</code> immediately after setting the flag forces an <em>early</em>, cheap rerun whose only job is to redraw the page with the flag now set — which is what makes the spinner and the disabled buttons (via the <code>_BUSY</code> flag, below) actually show up before the slow work starts, instead of after it finishes.</p>
+      <div class="design-note">
+        <span class="label">A real bug this pattern had to account for: Streamlit's own Stop control</span>
+        <p>Streamlit gives the user a native "Stop" control (a running-indicator with a stop icon) while a script is executing, and clicking it raises <code>StopException</code> inside the running script to actually interrupt it. The flag-reset code (<code>st.session_state.generating_notes = False</code>) deliberately lives in a <code>finally</code> block, not after a plain <code>try</code>/<code>except Exception</code>. The reason: <code>StopException</code> is a <code>BaseException</code>, not an <code>Exception</code> — a plain <code>except Exception:</code> clause does not catch it, so it would skip straight past the reset code entirely, permanently leaving <code>generating_notes</code> stuck at <code>True</code> and the Generate button disabled forever on every future rerun, with no way for the student to recover except manually clearing browser state. <code>finally</code> is the one block Python guarantees runs even when an exception it doesn't catch is propagating through — which is exactly the guarantee needed here.</p>
+      </div>
+
+      <h3>The busy overlay: why a plain spinner wasn't enough</h3>
+      <p><strong>The problem a bare <code>st.spinner()</code> has.</strong> <code>st.spinner("...")</code> shows a small animated message and visually dims the area around it, but it does not disable or intercept anything else on the page. While a generation call is running, every other button, upload widget, and input on the page is still fully live and clickable underneath that spinner. Clicking something else mid-generation doesn't error out cleanly — it queues up as a fresh interaction that Streamlit will process once the current script run finishes, producing confusing, out-of-order behavior (a second "Generate" click landing after the first one already started, for instance).</p>
+      <p><strong>What was built instead.</strong> A full-page overlay — a fixed-position, semi-transparent <code>div</code> covering the entire viewport with a high <code>z-index</code> (999) and <code>cursor: not-allowed</code> — is rendered via <code>st.markdown(..., unsafe_allow_html=True)</code> whenever <code>_BUSY</code> is <code>True</code>. Because it's a real DOM element sitting visually on top of everything else on the page, it doesn't just <em>look</em> disabled — it physically intercepts every click that would otherwise land on a button or widget underneath it, so nothing can actually be clicked while it's showing, not just "shouldn't be."</p>
+      <p><strong>The <code>_is_busy()</code> mechanism, and why it can't just check a fixed list of flags.</strong> (<code>app.py:242-251</code>) Three of the busy states are simple, fixed session-state keys (<code>generating_notes</code>, <code>solving_pyq</code>), and those get checked directly. But "Fix weak topics now" and "Expand answer" (the PYQ hint-expansion from Section 7) both use <em>per-document or per-question</em> dynamic keys — <code>fixing_weak_{doc_id}</code>, <code>expanding_pyq_{...}</code> — because multiple documents, or multiple PYQ answers, can each independently be mid-remediation or mid-expansion at once, and each needs its own separate flag rather than one shared boolean that would incorrectly report every document as busy just because one of them is. Since the exact key name for these depends on a database ID that isn't known in advance, <code>_is_busy()</code> can't just check <code>st.session_state.get("fixing_weak_")</code> — it has to iterate every key currently in <code>session_state</code> and pattern-match on the prefix (<code>k.startswith("fixing_weak_")</code>) to catch all of them regardless of which specific document or question they belong to.</p>
+      <div class="design-note">
+        <span class="label">Why Streamlit's own Stop control still has to stay clickable through the overlay</span>
+        <p>The overlay is deliberately built so Streamlit's native header — which holds the running-indicator and its Stop control — sits above the overlay in the page's stacking order, specifically because that Stop control is the <em>only</em> way to actually interrupt a stuck or too-long-running call. If the overlay covered the header too, a genuinely hung request (the retry-timeout ceiling from earlier sections caps most individual calls, but not every possible failure mode) would leave the student with literally no way to recover the page short of a full browser reload. The overlay's job is to block accidental double-clicks and out-of-order interactions on the app's own content, not to block the one legitimate escape hatch Streamlit itself provides.</p>
+      </div>
+
+      <h3>The progress checklist: updating the page <em>without</em> a rerun</h3>
+      <p>Section 5 mentioned the progress-callback mechanism briefly; here's the Streamlit-specific trick that makes it work. <code>_make_progress_handler()</code> (<code>app.py:48-76</code>) creates two <code>st.empty()</code> placeholders <em>before</em> the slow pipeline call starts, then returns a plain Python function (<code>handle</code>) that the pipeline calls directly, as a normal function call, once per concept as it works through the document. Each time <code>handle</code> is called, it doesn't return anything to trigger a rerun — it writes fresh Markdown straight into the existing <code>checklist_box</code> placeholder via <code>checklist_box.markdown(...)</code>, which Streamlit is able to push to the already-rendered page <em>immediately</em>, without needing to finish the whole script and start a new rerun. This is the one place in the app that updates the visible page <em>within</em> a single rerun rather than needing a fresh one — because the pipeline call and the checklist update are both happening inside the exact same Python call stack, on the same script execution, just at different points in time as the loop over concepts progresses.</p>
+      <p>Each concept starts pending (⏳) the moment its generation begins and flips to done (✅) <em>in place</em> once the pipeline reports it finished — a genuinely different, more informative signal than a single status line that just gets overwritten with whatever concept is currently being worked on, because a growing checklist lets a student see the whole run's progress at a glance, not just "what's happening right this second."</p>
+
+      <h3>Why the quiz uses <code>st.form</code> instead of the click-flag-rerun pattern</h3>
+      <p>Every other interactive control in this app triggers an immediate rerun the instant it changes — a checkbox ticked, a dropdown changed. Left unmanaged, a multi-question quiz built the same way would trigger a full script rerun on <em>every single radio button selection</em> — pick an answer to question 1, the whole script reruns; pick question 2, it reruns again — which is both wasteful and visually disruptive (the page could jump or flicker between each pick).</p>
+      <p><code>st.form(key=f"quiz_form_{doc['id']}")</code> (<code>app.py:686-694</code>) changes this: every widget declared inside the <code>with st.form(...):</code> block — each question's <code>st.radio</code> — stops triggering its own rerun the moment it's touched. Instead, all of the selections accumulate silently in the browser, and only <code>st.form_submit_button("Submit quiz")</code> actually triggers the rerun, at which point every widget's current value inside the form becomes available all at once. This is exactly the right fit for a quiz specifically because a quiz is naturally one atomic action from the student's perspective — "submit my answers" — not a sequence of independent actions each meant to do something on their own the moment they happen.</p>
+
+      <h3>Session-state key naming as a real design convention, not an accident</h3>
+      <p>Looking across the whole app, session-state keys fall into two deliberate categories:</p>
+      <ul>
+        <li><strong>Fixed, global keys</strong> — <code>generating_notes</code>, <code>solving_pyq</code>, <code>selected_doc</code> — used for state that is genuinely singular across the whole app session: there is only ever one "currently selected document," and only one notes-generation call can be in flight at a time (the Generate button is disabled while <code>_BUSY</code>, so a second one can't start anyway).</li>
+        <li><strong>Dynamic, ID-suffixed keys</strong> — <code>fixing_weak_{doc_id}</code>, <code>quiz_results_{doc_id}</code>, <code>skip_{doc_id}_{concept_id}</code>, <code>expanding_pyq_{...}</code> — used for state that must be tracked <em>per document</em>, <em>per concept</em>, or <em>per question</em>, because more than one of those can legitimately be mid-flight, mid-review, or storing separate results at the same time. A single shared <code>quiz_results</code> key, for instance, would silently overwrite one document's quiz results the moment a different document's quiz was taken in the same session — the ID suffix is what keeps each document's state genuinely independent inside the one shared <code>session_state</code> dictionary.</li>
+      </ul>
+      <p>This is the direct reason <code>_is_busy()</code> (above) has to prefix-scan <code>session_state</code> instead of checking a short fixed list — the dynamic-key convention that makes per-document state correct is the same convention that makes a busy check unable to just look up one well-known key name.</p>
+
+      <h3>What this model honestly can't do</h3>
+      <p>Being direct about the real limits of this architecture matters for a professor conversation as much as explaining what it does do. Streamlit's rerun model, as used in this app, has no true background-job system — nothing keeps running independently once a script run ends, and there is no way for a finished background task to reach back in and update a page the student has since navigated away from. There is no websocket-style push mechanism the app's own code uses to notify the browser of anything (Streamlit's underlying transport does use a persistent connection to send rerun output, but the app's Python code never sends an update outside of an active rerun the way a genuine push notification would). And outside of the narrow <code>st.empty()</code> placeholder trick used for the progress checklist, there is no partial-page update — every other state change in this app, no matter how small, requires triggering and waiting through a full top-to-bottom script rerun to become visible. The busy overlay, the flag-then-rerun pattern, and the placeholder-based checklist are not incidental implementation choices — they are the specific, deliberately-built workarounds this app needed <em>because</em> Streamlit's rerun model doesn't give any of that to a developer for free.</p>
+
+      <div class="page-nav"><a class="nav-link" data-page="s10">← Section 10</a><a class="nav-link" data-page="s12">Section 12: Known gaps &amp; rough edges →</a></div>
+    </section>
+
+    <section class="page" data-page="s12">
+      <h2><span class="h2-num">12</span> Known gaps &amp; rough edges</h2>
+
+      <p>Every section so far has, where it mattered, been honest in the moment about a specific limitation — the Verifier's non-auditability, the remediation cap's honest handoff, the missing enforcement behind the flashcard schedule. This section pulls all of those together in one place, deliberately, rather than leaving them scattered across nine sections a reader would have to remember individually. A professor asking "what doesn't this app do well, and why" deserves this list stated plainly, up front, not discovered piecemeal.</p>
+
+      <h3>1. The spaced-repetition schedule has no active enforcement</h3>
+      <p>Covered in depth in Section 9 and directly in chat before this section was written: <code>box_level</code> and <code>next_review_at</code> are tracked correctly, and the Flashcards tab now shows a genuine "Due for review" split so the schedule is at least visible. But nothing in the app <em>pushes</em> that information at a student — there's no notification, no reminder email, no in-app badge that appears outside of actively opening that one tab, and no penalty or escalation if a due card is simply never revisited. A card that's been overdue for a month looks identical to one that just became due a minute ago; the app has no concept of "how overdue," only "due or not." This is a genuinely passive implementation of an idea whose whole premise (spaced review) usually depends on the student actually returning on a schedule — the app tracks the schedule faithfully but has no way to make sure anyone follows it.</p>
+
+      <h3>2. The Verifier's judgment is not auditable, and not fully isolated per item</h3>
+      <p>Restated from Section 6, because it's a standing property of the app, not a one-time caveat: the Verifier check has no formula to fall back on the way the dedup similarity check does. There is no way to independently recompute why Groq marked a specific flashcard invalid beyond the short "reason" string it returns — the judgment either gets trusted or it doesn't, with no way to double-check it by hand. And because every surviving item for one concept is sent to Groq in a single batched request rather than one call per item, a given item's verdict is technically formed in a context that also includes every other item in that batch, even though each verdict is nominally "about" just its own numbered item. Neither of these is a bug exactly — they're the accepted cost of using a second LLM as a check instead of a deterministic rule — but they're real, standing limits on how much confidence the verification step can honestly claim.</p>
+
+      <h3>3. "Fails open" on Verifier failure is a standing risk, not just a one-off tradeoff</h3>
+      <p>Also from Section 6: if the Groq call itself fails (rate limit, outage, network issue), the app lets that batch's content through <em>unverified</em> rather than blocking it. This was a deliberate, reasoned choice — a temporary third-party outage shouldn't punish a student by discarding an entire concept's already shape-valid content — but it does mean there is a real, currently-unmeasured window where content reaches a student having only passed shape-filtering (Section 5), not the actual truth/relevance check. It has never been logged or surfaced anywhere how often this actually happens in practice; the app has no dashboard or count of "how many items were let through unverified this session."</p>
+
+      <h3>4. <code>pyq_solutions.matched_concept</code> is a soft link, not a guaranteed one</h3>
+      <p>From Section 9: this field is free text the model produces when asked to name the closest-matching concept, not a real foreign key to an actual <code>concepts</code> row. A PYQ solution's matched-concept label can, in principle, fail to correspond to any real concept in the document (different phrasing, a slightly different name) with nothing in the schema catching that mismatch. Anything that wants to reliably cross-reference a PYQ answer back to its concept has to do its own best-effort text comparison — there's no guaranteed join to lean on.</p>
+
+      <h3>5. The remediation loop has a real, hard ceiling on how much it can help</h3>
+      <p>Section 8's three-attempt cap is presented there as an honest design choice, and it is one — but restated as a gap: the app has no way to actually diagnose <em>why</em> a student is stuck beyond a single, generic "is there a prerequisite concept" check run once at the cap. A student whose confusion doesn't fit that one diagnostic question (a language/phrasing issue with the notes themselves, a misconception the misconception-notes mechanism doesn't capture cleanly, a gap the notes never covered at all) gets the same generic handoff message as any other stuck student. The app is honest about handing off to a human at that point, but it has no finer-grained way to help before reaching it.</p>
+
+      <h3>6. Everything assumes one student, one machine, one browser tab</h3>
+      <p>From Sections 9 and 11: SQLite has no real concurrent-write handling built in, and <code>st.session_state</code> is scoped to a single browser session — there is no login system, no user accounts, and no mechanism to separate one student's data from another's beyond "whatever's in this one local <code>studymate.db</code> file." This is a correct, deliberate match for the project's actual use case (a single MBA student running this locally for their own coursework), not an oversight — but it does mean the app would need real, non-trivial rework (a proper database, authentication, per-user data isolation) before it could ever serve more than one person at a time, which is worth stating plainly rather than leaving implicit.</p>
+
+      <h3>7. The 30-second retry ceiling is a blunt instrument</h3>
+      <p>Every LLM call in this app (Gemini and Groq alike) is wrapped in a retry mechanism that gives up after 30 seconds of total waiting, deliberately lowered from an original 120-second cap. The reasoning is sound and worth stating precisely: Streamlit's native Stop control can interrupt a script that's actively executing Python, but it cannot interrupt a call that's genuinely blocked inside network I/O waiting on a slow or rate-limited API response — so this 30-second cap is the <em>only</em> thing that actually unsticks the app if a call is taking too long, tuned for a bearable worst-case wait rather than maximum retry patience. The real cost of that same choice: a call that would have eventually succeeded on a fourth or fifth retry past 30 seconds — genuinely possible under a rate limit with a longer suggested backoff — gets treated exactly the same as a call that was permanently broken. The app can't currently tell "slow but would have worked" apart from "actually stuck," and errs toward giving up rather than waiting longer, every time.</p>
+
+      <h3>8. No automated tests anywhere in the project</h3>
+      <p>There is no <code>tests/</code> directory, no <code>test_*.py</code> or <code>*_test.py</code> file, and no test framework (pytest or otherwise) listed in <code>requirements.txt</code> — confirmed by checking the repository directly, not assumed. Every piece of behavior described across this entire document — the dedup threshold, the marks-to-points table, the remediation cap, the busy-overlay logic — has been verified by hand, through manual use of the running app, not by any test suite that would catch a regression automatically if one of these pieces of logic were changed later. For a coursework project built and iterated on primarily through direct testing and observed behavior (as several sections of this document describe — the PYQ length-control iterations, the prompt-placement discovery), this is a reasonable, honest tradeoff of engineering effort against the project's scope — but it does mean nothing in this codebase is protected against a future change silently breaking something that currently works.</p>
+
+      <div class="page-nav"><a class="nav-link" data-page="s11">← Section 11</a><a class="nav-link" data-page="s13">Section 13: Glossary →</a></div>
+    </section>
+
+    <section class="page" data-page="s13">
+      <h2><span class="h2-num">13</span> Glossary</h2>
+
+      <p>A quick-reference list of every technical term used across Sections 1-12, in plain language. This section is a lookup aid, not an argument — each entry is short on purpose, and points back to the section where the full explanation lives.</p>
+
+      <h3>Agent</h3>
+      <p>One of the eight specialized units this app uses to do a specific job: Orchestrator, Summarizer, Flashcard Maker, Quiz Maker, Verifier, PYQ Solver, and Vision Reader each make real AI calls; Style Rules is the eighth, a non-AI shared rulebook every other agent consults. See Section 4.</p>
+
+      <h3>API / API call</h3>
+      <p>A single request sent to an external AI service — Gemini or Groq — over the internet, asking it to do something (summarize text, judge a flashcard, etc.) and getting a response back.</p>
+
+      <h3>Box level</h3>
+      <p>Which of the five Leitner spaced-repetition tiers a flashcard currently sits in (1 through 5). A higher box means the card is reviewed less often because the student has been getting it right. See Section 9.</p>
+
+      <h3>Content-forcing</h3>
+      <p>The PYQ length-control approach that finally worked: instead of asking for a word count or paragraph count (both of which a model can game), the prompt requires specific pieces of content — a definition, a second example, a contrast, a risk — that are much harder to fake without actually engaging with the material. See Section 7.</p>
+
+      <h3>Dedup / deduplication</h3>
+      <p>The similarity check that catches and discards a flashcard (or glossary term) that's too close to one that already exists, using the <code>SequenceMatcher</code> formula and a 0.75 threshold. See Sections 5 and 6.</p>
+
+      <h3>Denormalization</h3>
+      <p>Deliberately storing a value in more than one place, or referencing more tables than the strictest relational design would require, for simplicity or query speed — used for <code>quiz_attempts</code> referencing both <code>quiz_questions.id</code> and <code>concepts.id</code> directly. See Section 9.</p>
+
+      <h3>Fail open / fail closed</h3>
+      <p>Two opposite ways to handle a check that itself can't run. "Fail open" lets the content through unchecked (what this app does when the Verifier's API call fails); "fail closed" would reject everything instead. See Section 6.</p>
+
+      <h3>Foreign key</h3>
+      <p>A database column that's guaranteed by the schema to point to a real row in another table. Contrasted in this app with a "soft link" — <code>pyq_solutions.matched_concept</code> — which is just plain text with no such guarantee. See Section 9.</p>
+
+      <h3>Grounding text</h3>
+      <p>The actual source material a piece of generated content is checked against — for this app, the uploaded notes plus a concept's own previously-generated summary, combined. Used both to generate new content and to verify it. See Section 5.</p>
+
+      <h3>JSON</h3>
+      <p>A structured, machine-readable text format (nested key-value pairs and lists) used both for how AI models return their answers to this app, and for how some database columns (like a quiz question's <code>options</code>) store list/dictionary data inside a single text field.</p>
+
+      <h3>Leitner system</h3>
+      <p>A specific, well-established spaced-repetition scheme — numbered "boxes," each with a fixed review interval, where a correct review moves a card up a box and a wrong one drops it straight back to box 1. This app's flashcard scheduling implements this exact system. See Section 9.</p>
+
+      <h3>LLM (large language model)</h3>
+      <p>The general category of AI model this app is built on top of — Gemini and Groq are both LLMs, trained on large amounts of text and able to read, reason about, and generate natural language.</p>
+
+      <h3>Marks weight</h3>
+      <p>The point value a PYQ question is stated as being worth (e.g. "10 marks"), captured during extraction and used as the primary signal for how developed that question's answer needs to be. See Section 7.</p>
+
+      <h3>Migration (schema migration)</h3>
+      <p>A change to a database's table structure (adding a column, for instance) applied to a database file that may already exist with data in it, without losing that data. This app handles migrations with a small hand-written additive-column check (<code>_migrate()</code>) rather than a dedicated migrations framework. See Section 9.</p>
+
+      <h3>Multi-agent system using a sequential pipeline architecture</h3>
+      <p>This app's precise architectural classification: multiple distinct agents (not one), coordinated centrally (not talking to each other directly), by plain deterministic code rather than an LLM-driven orchestrator, running one after another rather than in parallel or adaptively. See Section 4.</p>
+
+      <h3>Pipeline</h3>
+      <p>The plain, deterministic Python code that calls each agent in order and passes results between them. Explicitly not itself an agent — it makes no AI calls of its own, it just coordinates. See Section 4.</p>
+
+      <h3>Rerun</h3>
+      <p>Streamlit's core unit of execution: the entire <code>app.py</code> script running again from the very first line, triggered by any user interaction or an explicit <code>st.rerun()</code> call. See Section 11.</p>
+
+      <h3>Session state (<code>st.session_state</code>)</h3>
+      <p>The one piece of Streamlit state that survives a rerun — a dictionary tied to one browser session, used to remember things like which document is selected or whether a generation call is in progress. See Section 11.</p>
+
+      <h3>Shape-filtering</h3>
+      <p>The first, non-AI layer of content quality control: checking that a generated flashcard or quiz question is structurally well-formed (real text in the right fields, not a stray JSON blob) before it's even sent to the Verifier. See Section 5.</p>
+
+      <h3>Similarity threshold (0.75)</h3>
+      <p>The specific cutoff used by this app's dedup check: two pieces of text scoring 0.75 or higher on the <code>SequenceMatcher</code> similarity formula are treated as duplicates. See Section 6.</p>
+
+      <h3>Thinking budget</h3>
+      <p>An optional Gemini setting that lets the model reason internally before committing to its final answer, instead of writing linearly from the first word. Used only for substantial PYQ answers, never for high-volume calls, because it adds real latency. See Section 7.</p>
+
+      <h3>Verification / Verifier</h3>
+      <p>The second, real-AI-model layer of content quality control (after shape-filtering): a Groq call that judges whether a flashcard or quiz question is both grounded in the notes and actually on-topic for the concept it's filed under. See Section 6.</p>
+
+      <div class="page-nav"><a class="nav-link" data-page="s12">← Section 12</a><a class="nav-link" data-page="b1">Phase B, page 1: Foundation utilities →</a></div>
+    </section>
+
+    <section class="page" data-page="b1">
+      <h2><span class="h2-num">B1</span> Foundation utilities</h2>
+      <p class="subtitle">Files covered: <code>services/json_utils.py</code>, <code>services/logging_setup.py</code>, <code>services/note_parser.py</code></p>
+
+      <h3>Why these three files are grouped on one page</h3>
+      <p>None of these three files talks to an AI model, and none of them is one of the 8 named agents. They're all small helper files that other code quietly leans on. Each one does one unrelated job, which is also why they're three separate files instead of one big <code>utils.py</code>: <code>json_utils.py</code> only deals with cleaning up AI output, <code>logging_setup.py</code> only deals with writing logs, <code>note_parser.py</code> only deals with reading uploaded files. Keeping them apart means if you open one of these files, everything inside it is about that one job — nothing mixed in from somewhere else.</p>
+
+      <h3>File 1: <code>json_utils.py</code></h3>
+      <p><strong>What this file is for.</strong> When the app asks Gemini or Groq for an answer in a specific format (like <code>{"flashcards": [...]}</code>), the model almost always replies in that exact shape — but not always. Sometimes it sends back a plain list instead of the wrapped object, or puts a number where text was expected. If every part of the app read that response directly (like <code>result["flashcards"]</code>), one weird reply from the model would crash the whole thing. This file exists so nothing else in the app has to deal with that risk directly — everything reads the model's response through these functions instead, and a bad reply just quietly turns into "nothing here" instead of an error.</p>
+      <p><strong>Top of the file.</strong> There's a short comment at the top explaining the same thing above. The only import is <code>import json</code>, which is used later by <code>looks_like_json_blob</code> to test whether a piece of text is actually JSON. Nothing else in the file needs anything beyond plain Python.</p>
+
+      <pre><code>def safe_get_list(result, key: str) -> list:
+    if isinstance(result, list):
+        return result
+    if isinstance(result, dict):
+        value = result.get(key, [])
+        return value if isinstance(value, list) else []
+    return []</code></pre>
+      <p><strong><code>safe_get_list(result, key)</code></strong> pulls a list out of the model's response. Normally <code>result</code> is a dict and the list is stored under <code>key</code>, so it just returns <code>result[key]</code>. But if the model skipped the wrapping and sent back a plain list directly, this function notices that too and just returns it as-is. If neither of those is true — it's not a dict, not a list, or the key doesn't hold a list — it returns an empty list instead of crashing. So whatever calls this function can always safely loop over what comes back, no extra checking needed.</p>
+
+      <pre><code>def safe_get(result, key: str, default=""):
+    if isinstance(result, dict):
+        return result.get(key, default)
+    return default</code></pre>
+      <p><strong><code>safe_get(result, key, default)</code></strong> is the same idea but for a single value instead of a list — a bit of text, a number, whatever. If <code>result</code> isn't even a dict, it just returns whatever <code>default</code> was passed in instead of crashing.</p>
+
+      <pre><code>def safe_get_str(result, key: str, default: str = "") -> str:
+    value = safe_get(result, key, default)
+    return value.strip() if isinstance(value, str) else default</code></pre>
+      <p><strong><code>safe_get_str(result, key, default)</code></strong> calls <code>safe_get</code> above, then adds one more check: is what came back actually text? If the model sent a number or a list where text was expected, calling <code>.strip()</code> on it directly would crash. This function checks first, and only strips (removes extra spaces) if it's really a string — otherwise it falls back to <code>default</code>.</p>
+
+      <pre><code>def looks_like_json_blob(text: str) -> bool:
+    if not isinstance(text, str):
+        return False
+    stripped = text.strip()
+    if not stripped or stripped[0] not in "{[":
+        return False
+    try:
+        parsed = json.loads(stripped)
+    except (json.JSONDecodeError, ValueError):
+        return False
+    return isinstance(parsed, (dict, list))</code></pre>
+      <p><strong><code>looks_like_json_blob(text)</code></strong> catches a specific, strange mistake the model sometimes makes: instead of writing a plain answer, it writes a chunk of raw JSON into a text field — for example, a flashcard's answer coming back as <code>{"explanation": "...", "key_terms": [...]}</code> instead of an actual sentence. Here's what each line does: first, if <code>text</code> isn't even a string, return <code>False</code> right away. Then check the very first character after trimming spaces — if it isn't <code>{</code> or <code>[</code>, it can't be JSON, so return <code>False</code> immediately without doing any real work. Only if it passes that quick check does the function actually try to parse it as JSON with <code>json.loads</code>. If parsing fails, it's not JSON, so return <code>False</code>. If parsing succeeds, the last line checks the parsed result is a dict or list (not just a plain number or string that also happens to parse) — only then does it return <code>True</code>. This connects to Section 5: a flashcard whose answer trips this check gets thrown out before it's even checked for accuracy, because a real JSON object is never a legitimate plain-text answer.</p>
+
+      <h3>File 2: <code>logging_setup.py</code></h3>
+      <p><strong>What this file is for.</strong> Every part of the app that wants to print a log message (like "5 flashcards survived filtering") calls a function from this file to get its logger, instead of setting one up itself. That way logging always behaves the same way everywhere, and it's set up in exactly one place.</p>
+      <p><strong>Top of the file.</strong> A short comment says this file logs to both the console and a file on disk. Two imports: <code>logging</code> is Python's built-in logging tool that this whole file is built around, and <code>Path</code> (from <code>pathlib</code>) is used to build a file path in a way that works the same on Windows and other operating systems.</p>
+      <pre><code>LOG_PATH = Path(__file__).resolve().parent.parent / "data" / "studymate.log"
+_configured = False
+
+def get_logger(name: str) -> logging.Logger:
+    global _configured
+    if not _configured:
+        LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            handlers=[
+                logging.FileHandler(LOG_PATH, encoding="utf-8"),
+                logging.StreamHandler(),
+            ],
+        )
+        _configured = True
+    return logging.getLogger(name)</code></pre>
+      <p><strong><code>LOG_PATH</code></strong> is just the file location: <code>data/studymate.log</code>, worked out relative to this file's own location on disk.</p>
+      <p><strong><code>_configured</code></strong> starts as <code>False</code> and is used to make sure the setup below only happens once, explained next.</p>
+      <p><strong><code>get_logger(name)</code></strong> is the one function in this file, and every other file in the app calls it. The first time it's ever called, <code>_configured</code> is still <code>False</code>, so it runs the setup: makes sure the <code>data</code> folder exists, then calls <code>logging.basicConfig(...)</code> to say "every log message should include the time, the level (like INFO or ERROR), and which part of the app it came from, and should be sent to two places" — a file (<code>FileHandler</code>, writing to <code>LOG_PATH</code>) and the console (<code>StreamHandler</code>). Right after that it sets <code>_configured = True</code>. Every later call to <code>get_logger</code> skips that whole setup block because <code>_configured</code> is now <code>True</code> — it just goes straight to the last line, <code>logging.getLogger(name)</code>, which hands back a logger labeled with whatever <code>name</code> was passed in (usually the calling file's own name), so log messages show which part of the app they came from.</p>
+      <p><strong>Why two log destinations.</strong> The console output disappears the moment the terminal is closed or scrolled past. Writing the same messages to a real file on disk means they're still there afterward, if something needs to be checked after a run has already finished.</p>
+      <p><strong>Why the <code>_configured</code> check matters.</strong> Many different files call <code>get_logger</code>. If the setup code (<code>logging.basicConfig</code>) ran every single time instead of just once, log messages could end up getting printed twice, or the setup could behave inconsistently. The flag makes sure the one-time setup really only happens one time, no matter how many files ask for a logger.</p>
+
+      <h3>File 3: <code>note_parser.py</code></h3>
+      <p><strong>What this file is for.</strong> When a student uploads a notes file, it needs to become plain text before anything else in the app can use it. This file's whole job is: take the raw uploaded file, figure out what kind of file it is, and turn it into plain text. It only handles files that already contain real text (PDF, Word, PowerPoint, plain text) — a scanned photo with no actual text in it is a different case, handled separately by Vision Reader (an AI agent, covered in Phase A) using an AI model to actually read the image.</p>
+      <p><strong>Top of the file.</strong> A short comment says the file turns uploaded notes into plain text. Four imports: <code>io</code> is a standard Python tool used to treat raw bytes like a file, since the three library readers below all expect something file-like rather than raw bytes. <code>PdfReader</code> (from <code>pypdf</code>), <code>Document</code> (from <code>python-docx</code>), and <code>Presentation</code> (from <code>python-pptx</code>) are the three outside libraries that actually know how to read each file format — already named in Phase A's tech-stack section.</p>
+
+      <pre><code>def parse_pdf(file_bytes: bytes) -> str:
+    reader = PdfReader(io.BytesIO(file_bytes))
+    return "\n".join(page.extract_text() or "" for page in reader.pages)</code></pre>
+      <p><strong><code>parse_pdf</code></strong> wraps the raw bytes in <code>io.BytesIO</code> so <code>PdfReader</code> can read them like a file, then goes through every page and pulls its text out with <code>page.extract_text()</code>. The <code>or ""</code> part matters: if a page has no readable text at all (common for a scanned image-only page), <code>extract_text()</code> can return <code>None</code>, and trying to join a <code>None</code> value with the other pages' text would crash the whole function. The <code>or ""</code> quietly turns that <code>None</code> into an empty string instead, so the rest of the document still comes through fine.</p>
+
+      <pre><code>def parse_docx(file_bytes: bytes) -> str:
+    doc = Document(io.BytesIO(file_bytes))
+    return "\n".join(p.text for p in doc.paragraphs if p.text.strip())</code></pre>
+      <p><strong><code>parse_docx</code></strong> is the simplest one. <code>Document</code> reads the Word file and gives back a list of paragraphs. This line keeps only the paragraphs that actually have text in them (<code>if p.text.strip()</code> skips blank ones — empty lines used just for spacing) and joins the rest with line breaks.</p>
+
+      <pre><code>def parse_pptx(file_bytes: bytes) -> str:
+    prs = Presentation(io.BytesIO(file_bytes))
+    chunks = []
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if shape.has_text_frame and shape.text_frame.text.strip():
+                chunks.append(shape.text_frame.text)
+            if shape.has_notes_frame if hasattr(shape, "has_notes_frame") else False:
+                chunks.append(shape.notes_frame.text)
+        if slide.has_notes_slide and slide.notes_slide.notes_text_frame:
+            note_text = slide.notes_slide.notes_text_frame.text
+            if note_text.strip():
+                chunks.append(note_text)
+    return "\n".join(chunks)</code></pre>
+      <p><strong><code>parse_pptx</code></strong> is the longest of the four, because a slide's text isn't all in one place. Going through it line by line:</p>
+      <ul>
+        <li><code>chunks = []</code> — an empty list that collects every bit of text found, added to as the function goes.</li>
+        <li><code>for slide in prs.slides:</code> — goes through every slide in the file, one at a time.</li>
+        <li><code>for shape in slide.shapes:</code> — inside each slide, goes through every object on it — a "shape" is PowerPoint's word for anything placed on a slide: a text box, a title, an image, anything.</li>
+        <li><code>if shape.has_text_frame and shape.text_frame.text.strip():</code> — checks if this particular shape actually contains text at all (an image wouldn't) and that the text isn't just blank. If both are true, that text gets added to <code>chunks</code>.</li>
+        <li><code>if shape.has_notes_frame if hasattr(shape, "has_notes_frame") else False:</code> — this line looks confusing, so worth reading slowly: it's checking "does this shape even have a <code>has_notes_frame</code> property at all? If yes, check it. If not, just treat it as false." In practice, individual shapes in this library never actually have that property — speaker notes belong to the whole slide, not to one shape on it — so this check is always false and this line never actually does anything. It's leftover defensive code that doesn't cause harm, it just never runs.</li>
+        <li><code>if slide.has_notes_slide and slide.notes_slide.notes_text_frame:</code> — this is the line that actually matters for notes: it checks whether this slide has a speaker-notes section at all.</li>
+        <li>The next three lines pull the actual notes text out, check it isn't blank, and add it to <code>chunks</code> too.</li>
+        <li><code>return "\n".join(chunks)</code> — once every slide has been gone through, all the collected text pieces are joined together with line breaks into one block of text.</li>
+      </ul>
+      <p>Why bother with speaker notes at all: students sometimes write real explanations in the notes section under a slide, not just in the visible bullet points. Skipping that would throw away real content.</p>
+
+      <pre><code>def parse_txt(file_bytes: bytes) -> str:
+    return file_bytes.decode("utf-8", errors="ignore")</code></pre>
+      <p><strong><code>parse_txt</code></strong> is the simplest of all four — a plain text file is just decoded from raw bytes into a readable string. <code>errors="ignore"</code> means if a few bytes in the file don't decode cleanly (a rare encoding mismatch), those bytes are just skipped instead of the whole thing failing.</p>
+
+      <pre><code>PARSERS = {
+    ".pdf": parse_pdf,
+    ".docx": parse_docx,
+    ".pptx": parse_pptx,
+    ".txt": parse_txt,
+}
+
+def parse_uploaded_file(filename: str, file_bytes: bytes) -> str:
+    ext = "." + filename.rsplit(".", 1)[-1].lower()
+    parser = PARSERS.get(ext)
+    if not parser:
+        raise ValueError(f"Unsupported file type: {ext}. Supported: {list(PARSERS)}")
+    text = parser(file_bytes)
+    if not text.strip():
+        raise ValueError("No extractable text found in this file.")
+    return text</code></pre>
+      <p><strong><code>PARSERS</code></strong> is a lookup table matching each file extension to the function that handles it. Instead of writing "if it's a PDF do this, if it's a DOCX do that" as a long chain of if/else, this dictionary just maps the extension straight to the right function.</p>
+      <p><strong><code>parse_uploaded_file(filename, file_bytes)</code></strong> is the function everything else in the app actually calls. Line by line: it pulls the file extension off the filename and lowercases it; looks that extension up in <code>PARSERS</code>; if there's no match, it stops and raises an error saying this file type isn't supported. If there is a match, it calls that specific parser function on the file's bytes. Then it checks the result isn't empty once trimmed — if the parser ran but found no real text at all (most commonly a scanned PDF with no text layer, just images of pages), it raises a second, different error saying so. If everything worked, it returns the extracted text.</p>
+      <p><strong>Why two different errors.</strong> "This file type isn't supported" and "this file type is fine but nothing readable was found inside it" are genuinely different problems, and telling them apart in the error message helps the student understand what actually went wrong — the second case is exactly when they'd need to fall back to Vision Reader instead.</p>
+
+      <div class="page-nav"><span></span><a class="nav-link" data-page="s13">← Back to Phase A: Section 13</a></div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  document.getElementById('readerMenuBtn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.getElementById('readerMenu').classList.toggle('open');
+  });
+  document.addEventListener('click', (e) => {
+    const menu = document.getElementById('readerMenu');
+    if (menu.classList.contains('open') && !menu.contains(e.target) && e.target.id !== 'readerMenuBtn') {
+      menu.classList.remove('open');
+    }
+  });
+  function applyTheme(value){
+    document.documentElement.setAttribute('data-theme', value);
+    document.querySelectorAll('#readerMenu button').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-theme') === value);
+    });
+    try { localStorage.setItem('sm_docs_theme', value); } catch(e) {}
+  }
+  document.querySelectorAll('#readerMenu button').forEach(btn => {
+    btn.addEventListener('click', () => applyTheme(btn.getAttribute('data-theme')));
+  });
+  let saved = null;
+  try { saved = localStorage.getItem('sm_docs_theme'); } catch(e) {}
+  applyTheme(saved || 'light');
+
+  function goToPage(pageId){
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    const target = document.querySelector(`.page[data-page="${pageId}"]`);
+    if (!target) return;
+    target.classList.add('active');
+    document.querySelectorAll(`.nav-link[data-page="${pageId}"]`).forEach(l => l.classList.add('active'));
+    document.querySelector('nav.toc').classList.remove('open');
+    window.scrollTo(0, 0);
+    try { localStorage.setItem('sm_docs_page', pageId); } catch(e) {}
+  }
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      goToPage(link.getAttribute('data-page'));
+    });
+  });
+  let savedPage = null;
+  try { savedPage = localStorage.getItem('sm_docs_page'); } catch(e) {}
+  if (savedPage && document.querySelector(`.page[data-page="${savedPage}"]`)) {
+    goToPage(savedPage);
+  }
+</script>
+</body>
+</html>
