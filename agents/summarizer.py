@@ -184,6 +184,76 @@ def summarize_concept(concept: str, notes: str, style: str = DEFAULT_STYLE,
     return _normalize(result, concept, notes, style, depth, explanation_fields(depth))
 
 
+EXPAND_PROMPT = """You are helping a student go deeper on the concept "{concept}",
+building on an explanation they've already read.
+
+{style_depth_rules}
+For EACH of the hints below, write a genuinely developed addition covering:
+what the hint is pointing at (a real explanation, not just naming it), how it
+specifically applies to this concept, and a concrete example or elaboration.
+Do not compress a hint into one or two sentences -- give it the same level of
+depth as the rest of the explanation. The goal is to help the student truly
+understand this concept better, not just to add more words.
+
+Write the WHOLE addition as one connected piece of writing, not one
+self-contained mini-paragraph per hint stapled after another. Read the
+CURRENT EXPLANATION below first and continue in the same voice, as if you were
+still mid-explanation -- do not restart with a generic opener like "Next," or
+"Another point is." When you move from covering one hint to the next, connect
+them with real reasoning (how the new point relates to, builds on, or
+contrasts with what was just said), not a list-style transition.
+
+Also produce a FRESH set of 2-4 "to go further" hints for what's still missing
+after this addition -- do not repeat any of the hints already used, and do not
+suggest a hint that's really just a reworded version of one already covered.
+If there is genuinely nothing substantively new left to add about this concept,
+return an empty list for new_hints instead of inventing a weak or repetitive one.
+
+Return JSON:
+{{
+  "addition": "the new text only -- this will be appended after the current explanation, do not repeat it",
+  "new_hints": ["2-4 short bullets on what to add next, or an empty list if nothing genuinely new is left"]
+}}
+
+CURRENT EXPLANATION:
+---
+{current_explanation}
+---
+
+HINTS TO EXPAND ON:
+{hints}
+
+STUDY NOTES (for grounding):
+---
+{notes}
+---
+"""
+
+
+def expand_explanation(concept: str, notes: str, current_explanation: str,
+                        hints: list[str], style: str = DEFAULT_STYLE,
+                        depth: str = DEFAULT_DEPTH) -> dict:
+    """Returns {"addition": str, "new_hints": [str, ...]}. Mirrors pyq_solver's
+    expand_answer, but for a concept's own explanation rather than a PYQ model
+    answer -- same reasoning, no equivalent "marks" ceiling exists for a
+    concept, so the stopping decision is made by the caller (app.py), by
+    comparing new_hints against every hint already shown so far."""
+    prompt = EXPAND_PROMPT.format(
+        concept=concept,
+        style_depth_rules=style_depth_block(style, depth),
+        current_explanation=current_explanation,
+        hints="\n".join(f"- {h}" for h in hints),
+        notes=notes[:20000],
+    )
+    result = generate_json(prompt)
+    addition = _safe_text(result, "addition")
+    new_hints = [
+        h.strip() for h in safe_get_list(result, "new_hints")
+        if isinstance(h, str) and h.strip() and not looks_like_json_blob(h)
+    ]
+    return {"addition": addition, "new_hints": new_hints}
+
+
 def reexplain_concept(concept: str, notes: str, previous_summary: dict, attempt: int,
                        style: str = DEFAULT_STYLE, depth: str = DEFAULT_DEPTH,
                        misconceptions: list[str] | None = None) -> dict:

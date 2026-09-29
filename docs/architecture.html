@@ -206,23 +206,10 @@
     <div class="part">Phase B — The code itself</div>
     <ul>
       <li><a class="nav-link" data-page="b1">B1. Foundation utilities</a></li>
-      <li><a class="stub">B2. db.py — Part 1: schema &amp; migrations</a></li>
-      <li><a class="stub">B3. db.py — Part 2: CRUD &amp; queries</a></li>
-      <li><a class="stub">B4. gemini_client.py</a></li>
-      <li><a class="stub">B5. groq_client.py</a></li>
-      <li><a class="stub">B6. style_rules.py</a></li>
-      <li><a class="stub">B7. vision_reader.py</a></li>
-      <li><a class="stub">B8. orchestrator.py</a></li>
-      <li><a class="stub">B9. summarizer.py</a></li>
-      <li><a class="stub">B10. flashcard_maker.py</a></li>
-      <li><a class="stub">B11. verifier.py</a></li>
-      <li><a class="stub">B12. quiz_maker.py</a></li>
-      <li><a class="stub">B13. pyq_solver.py</a></li>
-      <li><a class="stub">B14. pipeline.py</a></li>
-      <li><a class="stub">B15. adaptive_loop.py</a></li>
-      <li><a class="stub">B16. export_builder.py</a></li>
-      <li><a class="stub">B17. app.py — Part 1</a></li>
-      <li><a class="stub">B18. app.py — Part 2</a></li>
+      <li><a class="nav-link" data-page="b2">B2. The agents/ folder</a></li>
+      <li><a class="nav-link" data-page="b3">B3. The services/ folder</a></li>
+      <li><a class="nav-link" data-page="b4">B4. The export/ folder</a></li>
+      <li><a class="nav-link" data-page="b5">B5. Root &amp; config files</a></li>
     </ul>
   </nav>
 
@@ -1165,7 +1152,253 @@ def parse_uploaded_file(filename: str, file_bytes: bytes) -> str:
       <p><strong><code>parse_uploaded_file(filename, file_bytes)</code></strong> is the function everything else in the app actually calls. Line by line: it pulls the file extension off the filename and lowercases it; looks that extension up in <code>PARSERS</code>; if there's no match, it stops and raises an error saying this file type isn't supported. If there is a match, it calls that specific parser function on the file's bytes. Then it checks the result isn't empty once trimmed — if the parser ran but found no real text at all (most commonly a scanned PDF with no text layer, just images of pages), it raises a second, different error saying so. If everything worked, it returns the extracted text.</p>
       <p><strong>Why two different errors.</strong> "This file type isn't supported" and "this file type is fine but nothing readable was found inside it" are genuinely different problems, and telling them apart in the error message helps the student understand what actually went wrong — the second case is exactly when they'd need to fall back to Vision Reader instead.</p>
 
-      <div class="page-nav"><span></span><a class="nav-link" data-page="s13">← Back to Phase A: Section 13</a></div>
+      <div class="page-nav"><a class="nav-link" data-page="s13">← Back to Phase A: Section 13</a><a class="nav-link" data-page="b2">B2: The agents/ folder →</a></div>
+    </section>
+
+    <section class="page" data-page="b2">
+      <h2><span class="h2-num">B2</span> The agents/ folder</h2>
+      <p class="subtitle">Every file in <code>agents/</code>, what each one is for, and what functions live inside it.</p>
+
+      <p>This folder holds the 8 named agents from Phase A, plus the shared rulebook (<code>style_rules.py</code>) they all lean on. Every file here is about generating or checking content with an AI call — that's the one thing every file in this folder has in common, and it's why this is a separate folder from <code>services/</code>, which holds plumbing that has nothing to do with AI calls at all (the database, logging, the two API client wrappers, and the pipeline that ties everything together).</p>
+
+      <h3><code>__init__.py</code></h3>
+      <p>Empty. Its only job is to tell Python "the <code>agents</code> folder is a package," so other files can write <code>from agents import orchestrator</code> instead of a messier import path. Contains no functions.</p>
+
+      <h3><code>orchestrator.py</code></h3>
+      <p><strong>What it's for.</strong> Two separate jobs that happen before the main generation loop starts: deciding whether an upload is even legitimate study material, and figuring out what distinct concepts/topics the notes actually cover.</p>
+      <ul>
+        <li><strong><code>check_is_study_material(text)</code></strong> — the input-relevance guard we added recently. Sends the extracted text to Gemini and asks whether it's genuinely academic material or something else (a menu, an unrelated document, meaningless text). Returns whether it passed and, if not, a short reason to show the student.</li>
+        <li><strong><code>extract_concepts(notes, extra_concepts, depth)</code></strong> — reads the notes and asks Gemini to name the distinct topics/concepts covered, with how many concepts to aim for controlled by the Depth setting (Section 3). Also merges in any concepts the student manually typed into "Extra concepts to include," skipping ones that are basically already in the extracted list.</li>
+      </ul>
+
+      <h3><code>vision_reader.py</code></h3>
+      <p><strong>What it's for.</strong> Reads plain text out of a photographed or scanned page using Gemini's vision input — this is what runs when a student uploads an image instead of a PDF/DOCX/etc.</p>
+      <ul>
+        <li><strong><code>extract_notes_from_images(images)</code></strong> — the only function in the file. Takes a list of images and sends them to Gemini with a prompt asking it to read all the text out (headings, bullets, paragraphs, even handwriting), and returns whatever text came back.</li>
+      </ul>
+
+      <h3><code>summarizer.py</code></h3>
+      <p><strong>What it's for.</strong> The Summarizer agent — produces the actual explanation for a concept: what the notes say, what the model adds beyond the notes, an analogy, an exam-answer example, key terms, and "go further" hints. Also handles re-explaining a concept differently for the adaptive loop, and expanding an existing explanation using those hints.</p>
+      <ul>
+        <li><strong><code>summarize_concept(concept, notes, style, depth)</code></strong> — the main function; produces a brand-new explanation for a concept the first time it's generated.</li>
+        <li><strong><code>expand_explanation(concept, notes, current_explanation, hints, style, depth)</code></strong> — the function behind the "Explain this further" feature we just built; takes the existing explanation and the current hints, and returns new content plus a fresh set of hints.</li>
+        <li><strong><code>reexplain_concept(concept, notes, previous_summary, attempt, style, depth, misconceptions)</code></strong> — used by the adaptive remediation loop (Phase A Section 8) to write a genuinely different explanation when a student is struggling, optionally targeting specific misconceptions from a quiz attempt.</li>
+        <li><strong><code>_clean_key_term(kt)</code></strong> — internal helper; validates and tidies up one key-term entry from the model's response.</li>
+        <li><strong><code>_safe_text(result, key)</code></strong> — internal helper; reads a text field out of the model's response safely, rejecting it if it looks like a stray JSON blob instead of real text.</li>
+        <li><strong><code>_fill_missing_explanation_fields(...)</code></strong> — internal helper; if a required explanation field came back empty or too short, makes one corrective follow-up call to fill in just that field, instead of re-asking for everything.</li>
+        <li><strong><code>_build_explanation(...)</code></strong> — internal helper; assembles the final explanation text from the separate named fields, calling <code>_fill_missing_explanation_fields</code> if any came back short.</li>
+        <li><strong><code>ensure_key_terms_count(...)</code></strong> — checks the number of key terms returned against the (style, depth) minimum; if short, makes a follow-up call to extract more terms from the model's own explanation text.</li>
+        <li><strong><code>_normalize(...)</code></strong> — internal helper; takes the model's raw response and assembles it into the final, consistent summary dict every caller expects.</li>
+      </ul>
+
+      <h3><code>flashcard_maker.py</code></h3>
+      <p><strong>What it's for.</strong> The Flashcard Maker agent — turns a concept's grounding text into a set of front/back flashcards.</p>
+      <ul>
+        <li><strong><code>make_flashcards(concept, notes, n, style, depth)</code></strong> — generates the first-pass set of flashcards for a concept, how many controlled by <code>n</code> (itself driven by Depth).</li>
+        <li><strong><code>make_drill_flashcards(concept, notes, existing_cards, n, style, depth)</code></strong> — used by the adaptive remediation loop; generates new flashcards for a concept a student is struggling with, given the cards that already exist so it can aim for genuinely new angles instead of near-repeats.</li>
+      </ul>
+
+      <h3><code>verifier.py</code></h3>
+      <p><strong>What it's for.</strong> The Verifier agent — the real second-AI-model check from Phase A Section 6, judging whether generated flashcards/quiz questions are grounded in the notes and actually on-topic for the concept they're filed under.</p>
+      <ul>
+        <li><strong><code>verify_items(items, notes, concept)</code></strong> — the core function; sends a numbered batch of items to Groq and gets back a verdict (valid or not, plus a reason) for each one.</li>
+        <li><strong><code>_valid_map(results)</code></strong> — internal helper; turns the raw list of verdicts into a simple lookup so the caller can check "was item 3 valid?" quickly.</li>
+        <li><strong><code>verify_flashcards(flashcards, notes, concept)</code></strong> — calls <code>verify_items</code> specifically for flashcards (checking their "front" text) and filters the flashcard list down to only the ones that passed.</li>
+        <li><strong><code>verify_quiz_questions(questions, notes, concept)</code></strong> — same idea, for quiz questions.</li>
+      </ul>
+
+      <h3><code>quiz_maker.py</code></h3>
+      <p><strong>What it's for.</strong> The Quiz Maker agent — turns a concept's grounding text into multiple-choice quiz questions, each with a correct answer and a reason for why each wrong option is wrong (used to show a misconception note when a student picks it).</p>
+      <ul>
+        <li><strong><code>_is_valid_question(question)</code></strong> — internal helper; checks a single question has the right shape (real question text, a real options list, a valid correct-index) before it's kept.</li>
+        <li><strong><code>_shuffle_options(question)</code></strong> — internal helper; randomizes the order of a question's options (and updates <code>correct_index</code> to match) so the correct answer isn't always in the same position.</li>
+        <li><strong><code>make_quiz(concept, notes, n, style, depth)</code></strong> — generates the first-pass quiz for a concept.</li>
+        <li><strong><code>make_followup_quiz(concept, notes, n, style, depth)</code></strong> — used by the adaptive remediation loop; generates a fresh quiz for a concept after remediation, to check whether the gap actually closed.</li>
+      </ul>
+
+      <h3><code>pyq_solver.py</code></h3>
+      <p><strong>What it's for.</strong> The PYQ Solver agent — the whole PYQ subsystem from Phase A Section 7. Reads questions off an uploaded question paper, then later writes model answers for them once real concepts exist to match answers against.</p>
+      <ul>
+        <li><strong><code>_parse_questions(raw_items)</code></strong> — internal helper; turns the model's raw extracted-question response into a clean, consistent list of question dicts (text + marks).</li>
+        <li><strong><code>extract_questions_from_images(images)</code></strong> — reads questions off photographed/scanned question paper pages.</li>
+        <li><strong><code>extract_questions_from_text(text)</code></strong> — reads questions off a question paper that was already extracted to plain text (PDF/DOCX/PPTX/TXT).</li>
+        <li><strong><code>_group_into_chunks(questions, depth)</code></strong> — internal helper; splits questions into the solo-vs-batched groups described in Phase A Section 7 — substantial questions solved alone, short ones batched together.</li>
+        <li><strong><code>solve_questions(questions, concepts, notes, ...)</code></strong> — the main solving function; writes a model answer for every question, matching each one to the closest concept and using the marks-driven content-forcing approach.</li>
+        <li><strong><code>expand_answer(question, matched_concept, current_answer, hints, notes, style)</code></strong> — the function behind PYQ's own "Expand answer" feature, extending an existing model answer using its current hints.</li>
+      </ul>
+
+      <h3><code>style_rules.py</code></h3>
+      <p><strong>What it's for.</strong> The shared, non-AI rulebook every other agent in this folder reads from — Phase A Section 3 in full. Not an agent itself (makes no AI calls), but every agent depends on it for consistent style/depth behavior. Holds the raw data (<code>STYLE_RULES</code>, <code>DEPTH_PARAMS</code>, <code>KEY_TERMS_COUNT</code>, <code>FLOW_RULES</code>, and related tables) plus the functions that turn that data into prompt text.</p>
+      <ul>
+        <li><strong><code>_depth_rules_text(style, depth)</code></strong> — internal helper; builds the depth-specific instruction block (exam answer length, key terms count, expand-hints count, comparisons) for a given (style, depth) pair.</li>
+        <li><strong><code>style_depth_block(style, depth)</code></strong> — the full style + depth instruction block, for the Summarizer only (its schema has depth-specific fields other agents don't).</li>
+        <li><strong><code>style_only_block(style)</code></strong> — just the vocabulary/tone/flow rules, safe for any agent regardless of its own schema; used by Flashcard Maker, Quiz Maker, and PYQ Solver.</li>
+        <li><strong><code>concept_granularity_text(depth)</code></strong> — returns the instruction text controlling how many concepts Orchestrator should aim to extract at a given Depth.</li>
+        <li><strong><code>exam_answer_length(depth)</code></strong> — returns the target length text for a concept's exam-answer example at a given Depth.</li>
+        <li><strong><code>_high_marks_answer_spec(min_points)</code></strong> — internal helper; builds the "N fully-developed points" instruction text for a substantial PYQ answer, per the marks-to-points table from Phase A Section 7.</li>
+        <li><strong><code>pyq_answer_length(marks, depth)</code></strong> — decides how long a PYQ answer should be, based on the question's marks weight (falling back to Depth if no marks were captured).</li>
+        <li><strong><code>pyq_needs_thinking(marks, depth)</code></strong> — decides whether a PYQ answer is substantial enough to turn on Gemini's thinking budget.</li>
+        <li><strong><code>flashcard_n(depth)</code></strong> / <strong><code>quiz_n(depth)</code></strong> — return how many flashcards/quiz questions to request at a given Depth.</li>
+        <li><strong><code>explanation_fields(depth)</code></strong> — returns which named explanation fields (core/detail/example) apply at a given Depth.</li>
+        <li><strong><code>explanation_fields_schema(depth)</code></strong> — returns the JSON schema text for those fields, to embed directly in the Summarizer's prompt.</li>
+        <li><strong><code>key_terms_min(style, depth)</code></strong> — returns the minimum acceptable key-terms count for a (style, depth) pair.</li>
+        <li><strong><code>escalated_explanation_fields(depth, attempt)</code></strong> / <strong><code>escalated_explanation_fields_schema(depth, attempt)</code></strong> — like the two functions above, but for the adaptive loop's re-explanation, which escalates to a richer schema on repeated attempts rather than reusing the schema that already failed to get the concept across.</li>
+      </ul>
+
+      <div class="page-nav"><a class="nav-link" data-page="b1">← B1: Foundation utilities</a><a class="nav-link" data-page="b3">B3: The services/ folder →</a></div>
+    </section>
+
+    <section class="page" data-page="b3">
+      <h2><span class="h2-num">B3</span> The services/ folder</h2>
+      <p class="subtitle">Every file in <code>services/</code>, what each one is for, and what functions live inside it.</p>
+
+      <p>This folder is the non-AI plumbing plus the two thin wrappers around the actual AI APIs. Everything here either stores/reads data, talks to an external API at the transport level (retries, throttling, error handling — not prompts or content decisions), or coordinates calls into the <code>agents/</code> folder. Nothing in this folder decides <em>what</em> to ask an AI model — that's <code>agents/</code>'s job; this folder decides <em>how</em> a call actually gets made and where the results end up.</p>
+
+      <h3><code>__init__.py</code></h3>
+      <p>Empty, same role as <code>agents/__init__.py</code> — marks <code>services</code> as a Python package. Contains no functions.</p>
+
+      <h3><code>json_utils.py</code>, <code>logging_setup.py</code>, <code>note_parser.py</code></h3>
+      <p>Already covered in full, function by function, on <a class="nav-link" data-page="b1" style="display:inline;">B1: Foundation utilities</a> — not repeated here. In one line each: <code>json_utils.py</code> defends against malformed AI JSON output, <code>logging_setup.py</code> sets up one shared logger, <code>note_parser.py</code> turns an uploaded PDF/DOCX/PPTX/TXT file into plain text.</p>
+
+      <h3><code>db.py</code></h3>
+      <p><strong>What it's for.</strong> The entire persistence layer — every read and write to the SQLite database goes through this one file. Covered conceptually in Phase A Section 9; this is the actual function list.</p>
+      <ul>
+        <li><strong><code>get_conn()</code></strong> — opens a new database connection, creating the <code>data/</code> folder first if it doesn't exist yet.</li>
+        <li><strong><code>init_db()</code></strong> — runs the full schema (creating every table if it doesn't already exist) and then calls <code>_migrate</code>.</li>
+        <li><strong><code>_migrate(conn)</code></strong> — the additive-column migration check from Section 9; adds any columns introduced after a dev database already existed, so an older local <code>studymate.db</code> doesn't break.</li>
+        <li><strong><code>now_iso()</code></strong> — returns the current UTC time as an ISO string; used everywhere a timestamp is stored.</li>
+        <li><strong><code>parse_summary(raw)</code></strong> — turns a concept's stored JSON summary string back into a Python dict, filling in defaults for any missing fields (including the newer <code>expand_rounds_used</code>/<code>hints_shown</code> bookkeeping fields).</li>
+        <li><strong><code>create_document(title, raw_text, explanation_style, depth_level)</code></strong> — inserts a new document row and returns its id.</li>
+        <li><strong><code>list_documents()</code></strong> — returns every document, for the sidebar's document list.</li>
+        <li><strong><code>get_document(doc_id)</code></strong> — returns one document's full row.</li>
+        <li><strong><code>delete_document(doc_id)</code></strong> — deletes a document and everything under it (concepts, flashcards, quiz questions, quiz attempts, remediations, PYQ solutions). Written as a manual cascade — deleting child rows explicitly in the right order — rather than relying on the database to cascade automatically.</li>
+        <li><strong><code>create_concept(document_id, name, source, summary)</code></strong> — inserts a new concept row and returns its id.</li>
+        <li><strong><code>list_concepts(document_id)</code></strong> — returns every concept for a document.</li>
+        <li><strong><code>get_concept(concept_id)</code></strong> — returns one concept's full row.</li>
+        <li><strong><code>update_concept_summary(concept_id, summary)</code></strong> — overwrites a concept's stored summary JSON (used for both first-pass generation and the notes-expansion feature).</li>
+        <li><strong><code>add_concept_remediation(concept_id, attempt, summary)</code></strong> — inserts a new remediation-round summary as its own row, keeping it separate from the original summary (Section 9's append-only design).</li>
+        <li><strong><code>list_concept_remediations(concept_id)</code></strong> — returns every remediation round stored for a concept.</li>
+        <li><strong><code>update_concept_status(concept_id, status, increment_attempt)</code></strong> — updates a concept's lifecycle status (unseen/learning/cleared/flagged), optionally bumping its attempt counter.</li>
+        <li><strong><code>add_flashcard(concept_id, front, back, source, attempt)</code></strong> — inserts a new flashcard, starting at box 1 for the spaced-repetition schedule.</li>
+        <li><strong><code>list_flashcards(document_id)</code></strong> — returns every flashcard across every concept in a document.</li>
+        <li><strong><code>reschedule_flashcards_for_concept(concept_id, correct)</code></strong> — the Leitner box-update function from Section 9; moves every flashcard for a concept up a box (if correct) or straight back to box 1 (if not), recalculating <code>next_review_at</code>.</li>
+        <li><strong><code>add_quiz_question(concept_id, question, options, correct_index, distractor_notes)</code></strong> — inserts a new quiz question.</li>
+        <li><strong><code>list_quiz_questions(document_id, concept_id)</code></strong> — returns quiz questions for a document, optionally filtered to one concept.</li>
+        <li><strong><code>record_quiz_attempt(question_id, concept_id, selected_index, correct)</code></strong> — logs one answered question as its own row — the raw evidence table Section 8's weak-concept detection is computed from.</li>
+        <li><strong><code>add_pyq_solution(document_id, question, matched_concept, model_answer, expand_hints)</code></strong> — inserts a new PYQ model answer.</li>
+        <li><strong><code>list_pyq_solutions(document_id)</code></strong> — returns every PYQ solution for a document.</li>
+        <li><strong><code>update_pyq_solution(solution_id, model_answer, expand_hints)</code></strong> — overwrites a PYQ solution's answer text and hints after an expansion round.</li>
+      </ul>
+
+      <h3><code>gemini_client.py</code></h3>
+      <p><strong>What it's for.</strong> The thin wrapper around Google's Gemini SDK — every agent that calls Gemini goes through this file rather than touching the SDK directly, so retry logic, throttling, and error handling live in exactly one place.</p>
+      <ul>
+        <li><strong><code>_throttle()</code></strong> — internal helper; sleeps if needed to keep calls spaced out under the free-tier rate limit (~4.6 requests/minute).</li>
+        <li><strong><code>describe_error(e)</code></strong> — turns a raw Gemini error into a plain, student-facing message, specifically detecting the daily free-tier quota exhaustion case.</li>
+        <li><strong><code>_retry_delay_from_error(e)</code></strong> — internal helper; pulls a server-suggested retry delay out of a 429 rate-limit error, if the API provided one.</li>
+        <li><strong><code>_call_with_retry(fn)</code></strong> — internal helper; the actual retry loop, capped at 30 seconds total wait (Section 12's retry-ceiling discussion).</li>
+        <li><strong><code>_get_client()</code></strong> — internal helper; builds (and reuses) the Gemini SDK client object.</li>
+        <li><strong><code>_parse_json_text(text)</code></strong> — internal helper; parses the model's raw text response as JSON, tolerating minor formatting issues.</li>
+        <li><strong><code>generate_json(prompt, model, ...)</code></strong> — the main function nearly every agent calls; sends a prompt (optionally with images, optionally with a thinking budget) and returns parsed JSON.</li>
+        <li><strong><code>_build_contents(prompt, images)</code></strong> — internal helper; assembles the request payload when images are attached (Vision Reader, PYQ image extraction).</li>
+        <li><strong><code>generate_text(prompt, model)</code></strong> — like <code>generate_json</code>, but returns plain text instead of parsed JSON; used by the adaptive loop's prerequisite-check call.</li>
+      </ul>
+
+      <h3><code>groq_client.py</code></h3>
+      <p><strong>What it's for.</strong> The equivalent thin wrapper around Groq's SDK, used specifically by the Verifier agent (Section 6's "why Groq, not Gemini" reasoning — a genuinely different model checking the first model's work).</p>
+      <ul>
+        <li><strong><code>_get_client()</code></strong> — internal helper; builds (and reuses) the Groq SDK client object.</li>
+        <li><strong><code>_throttle()</code></strong> — internal helper; same purpose as Gemini's version, tuned to Groq's own rate limit.</li>
+        <li><strong><code>_retry_after_seconds(e)</code></strong> — internal helper; Groq's equivalent of <code>_retry_delay_from_error</code>, reading the retry hint off a <code>RateLimitError</code>.</li>
+        <li><strong><code>_call_with_retry(fn)</code></strong> — internal helper; the same kind of capped retry loop as Gemini's client, written separately since the two SDKs raise different exception types.</li>
+        <li><strong><code>_parse_json_text(text)</code></strong> — internal helper; same purpose as Gemini's version.</li>
+        <li><strong><code>generate_json(prompt, model)</code></strong> — the main function; sends a prompt to Groq and returns parsed JSON. No image support and no thinking-budget parameter, since Verifier never needs either.</li>
+      </ul>
+
+      <h3><code>pipeline.py</code></h3>
+      <p><strong>What it's for.</strong> The non-agent coordinator from Phase A Section 4 — calls every agent in the right order and persists the results. Makes no AI calls of its own.</p>
+      <ul>
+        <li><strong><code>_normalize(text)</code></strong> — internal helper; lowercases and strips non-alphanumeric characters, used before every similarity comparison.</li>
+        <li><strong><code>_is_duplicate(candidate, seen)</code></strong> — the dedup check from Section 6; compares a candidate string against a list of already-normalized strings using <code>SequenceMatcher</code> at the 0.75 threshold.</li>
+        <li><strong><code>generate_study_material(title, notes, extra_concepts, progress_cb, style, depth)</code></strong> — the main pipeline function for a plain notes upload; extracts concepts, then runs Summarizer → Flashcard Maker → Verifier → Quiz Maker → Verifier for each one, persisting as it goes.</li>
+        <li><strong><code>generate_from_pyq(title, text_notes, images, progress_cb, style, depth)</code></strong> — the PYQ variant; extracts questions first, feeds them into <code>generate_study_material</code> as the "notes," then calls PYQ Solver to write model answers afterward.</li>
+      </ul>
+
+      <h3><code>adaptive_loop.py</code></h3>
+      <p><strong>What it's for.</strong> The remediation loop from Phase A Section 8 — reacts to a weak quiz result on one concept and runs a fresh round of re-explanation, drill flashcards, and a follow-up quiz.</p>
+      <ul>
+        <li><strong><code>is_weak(wrong, answered)</code></strong> — the trigger condition; <code>True</code> only when both at least 2 wrong <em>and</em> at least half of answered questions were wrong.</li>
+        <li><strong><code>run_remediation(document_id, concept_id, notes, misconceptions)</code></strong> — the main function; runs one full remediation round for a concept.</li>
+        <li><strong><code>_handle_cap_reached(concept, notes)</code></strong> — internal helper; runs once the 3-attempt cap is hit — checks for a prerequisite gap, then hands off to a human-resource message if none is found.</li>
+        <li><strong><code>clear_concept_if_correct(concept_id)</code></strong> — marks a concept as cleared and advances its flashcards' box level, called when a student answers a concept's quiz with zero wrong.</li>
+      </ul>
+
+      <div class="page-nav"><a class="nav-link" data-page="b2">← B2: The agents/ folder</a><a class="nav-link" data-page="b4">B4: The export/ folder →</a></div>
+    </section>
+
+    <section class="page" data-page="b4">
+      <h2><span class="h2-num">B4</span> The export/ folder</h2>
+      <p class="subtitle">Every file in <code>export/</code>, what each one is for, and what functions live inside it.</p>
+
+      <p>This folder is where a document becomes a downloadable file — the offline HTML study pack and the PDF answer key, covered in full in Phase A Section 10. One Python file assembles the data and picks a template; the two HTML files are the templates themselves, rendered by Jinja2 rather than executed as code.</p>
+
+      <h3><code>__init__.py</code></h3>
+      <p>Empty, same role as the other two <code>__init__.py</code> files — marks <code>export</code> as a Python package.</p>
+
+      <h3><code>export_builder.py</code></h3>
+      <p><strong>What it's for.</strong> The one file everything export-related runs through — gathers all of a document's data into one dict, then hands it to whichever template matches the requested format.</p>
+      <ul>
+        <li><strong><code>_normalize_term(text)</code></strong> — internal helper; lowercases and strips non-alphanumeric characters from a glossary term, before comparing it for similarity.</li>
+        <li><strong><code>_merge_glossary_terms(concepts)</code></strong> — the glossary-dedup function from Section 10; merges every concept's key terms into one list for the standalone Glossary view, dropping near-duplicates using the same <code>SequenceMatcher</code>/0.75 check used everywhere else.</li>
+        <li><strong><code>_build_context(document_id)</code></strong> — the shared assembly function; pulls every concept, flashcard, quiz question, and PYQ solution for a document into one dict, used by both export formats so neither can silently drift from the other.</li>
+        <li><strong><code>build_html(document_id)</code></strong> — renders the interactive, self-contained HTML study pack using <code>html_template.html</code>.</li>
+        <li><strong><code>build_pdf(document_id)</code></strong> — renders the static, print-friendly answer key using <code>pdf_template.html</code>, then converts that HTML to PDF bytes via <code>xhtml2pdf</code>.</li>
+      </ul>
+
+      <h3><code>html_template.html</code></h3>
+      <p><strong>What it's for.</strong> The actual interactive export — not a Python file, a Jinja2 template that gets filled in with a document's data once, at export time, then downloaded as one finished, self-contained HTML file. Contains the multi-page navigation JS (the same <code>data-page</code>/<code>.active</code> pattern this documentation site itself borrowed), the flip-to-reveal flashcard markup, the client-side-graded self-quiz (<code>QUIZ_DATA</code> embedded as JSON), and the theme/font-size/column-width controls — all covered in full in Section 10. No Python functions live here; it's HTML, CSS, and plain JavaScript.</p>
+
+      <h3><code>pdf_template.html</code></h3>
+      <p><strong>What it's for.</strong> A deliberately separate, simpler template for the PDF export — plain tables and basic block layout instead of the interactive template's richer CSS, written specifically for what <code>xhtml2pdf</code> can actually render (Section 10's "why the PDF isn't just a PDF-ified copy of the HTML template" reasoning). Every flashcard and quiz answer is shown directly rather than hidden behind a click, since a printed page has no interactivity at all. Also plain HTML/CSS, no Python functions.</p>
+
+      <div class="page-nav"><a class="nav-link" data-page="b3">← B3: The services/ folder</a><a class="nav-link" data-page="b5">B5: Root &amp; config files →</a></div>
+    </section>
+
+    <section class="page" data-page="b5">
+      <h2><span class="h2-num">B5</span> Root &amp; config files</h2>
+      <p class="subtitle">Everything outside <code>agents/</code>, <code>services/</code>, and <code>export/</code> — the entrypoint, config, and project-level files.</p>
+
+      <h3><code>app.py</code></h3>
+      <p><strong>What it's for.</strong> The Streamlit entrypoint — the single file that <em>is</em> the app from the browser's point of view. Covered fully in Phase A Section 11 (Streamlit's rerun model). Unlike the other folders, most of this file isn't inside functions at all — it's top-level script code that runs top-to-bottom on every rerun (the sidebar, the upload forms, the tabs, the busy overlay). Only the reusable pieces are pulled out into real functions:</p>
+      <ul>
+        <li><strong><code>_safe_filename(title)</code></strong> — strips characters forbidden in filenames, for the export download buttons.</li>
+        <li><strong><code>style_depth_pickers(key_prefix)</code></strong> — renders the paired Explanation Style / Depth dropdowns, reused for both the notes-upload form and the PYQ-upload form.</li>
+        <li><strong><code>_make_progress_handler()</code></strong> — builds the live-updating progress checklist (Section 11's <code>st.empty()</code> trick) shown while generation runs.</li>
+        <li><strong><code>_grade_and_store_quiz(doc, concepts, questions_by_concept)</code></strong> — grades a submitted quiz form in one pass, logs each attempt, and clears any concept the student got perfectly.</li>
+        <li><strong><code>_render_quiz_results(doc, state, concepts)</code></strong> — renders the graded results (correct/incorrect per question, misconception notes) after a quiz is submitted.</li>
+        <li><strong><code>_render_remediation_report(concept_name, report)</code></strong> — renders the outcome of a single remediation round (new explanation, drill card count, follow-up question count, or the prerequisite/handoff message).</li>
+        <li><strong><code>_remediation_box(text, attempt, header)</code></strong> — small shared rendering helper for one remediation-attempt's box, used by the function above and by the concept summary view.</li>
+        <li><strong><code>_render_remediation_summaries(concept_id)</code></strong> — renders a concept's full remediation history (every past attempt's re-explanation) in the Summary tab.</li>
+        <li><strong><code>_is_busy()</code></strong> — the busy-check function from Section 11; scans <code>session_state</code> for any in-flight LLM call across the whole app.</li>
+      </ul>
+      <p>The rest of the file — sidebar document list/upload forms, the input-relevance guard call, the main tabs (Summary, Flashcards, Quiz, Progress dashboard, PYQ Solutions), and the export buttons — is plain top-level Streamlit code, organized in the order it appears on the page rather than as separate functions.</p>
+
+      <h3><code>README.md</code></h3>
+      <p>The project's own top-level description — what the app does, why it's not "just ChatGPT" (independent verification, diagnostic quiz distractors, the capped adaptive loop, shared concept vocabulary), a short architecture summary, and setup instructions. Not code; the first thing anyone (including a professor) would read before looking at anything else.</p>
+
+      <h3><code>requirements.txt</code></h3>
+      <p>The pinned list of every external Python package the project depends on: <code>streamlit</code>, <code>google-genai</code>, <code>groq</code>, <code>python-docx</code>, <code>python-pptx</code>, <code>pypdf</code>, <code>python-dotenv</code>, <code>jinja2</code>, <code>xhtml2pdf</code> — every one of them already covered as a tech-stack decision in Phase A Section 2. What <code>pip install -r requirements.txt</code> actually installs.</p>
+
+      <h3><code>.streamlit/config.toml</code></h3>
+      <p>Streamlit's own app-level config file. Currently sets one option (<code>toolbarMode = "auto"</code>), and the comment above it in the actual file is worth knowing about directly: a stricter <code>toolbarMode</code> was tried specifically to hide Streamlit's "Deploy" button, but that setting also hides the <em>entire</em> header — including the native running-indicator/Stop control this app depends on as the only way to interrupt a stuck call (Section 11's busy-overlay design). Left at the default for that reason; the Deploy button is hidden a different way instead, via a small CSS rule inside <code>app.py</code> itself.</p>
+
+      <h3><code>docs/architecture.html</code></h3>
+      <p>This document. Not part of the running app at all — a standalone reference file, built separately, that explains the rest of the project.</p>
+
+      <h3><code>data/</code> folder</h3>
+      <p>Not source code — the three files that live here (<code>studymate.db</code>, <code>studymate.log</code>) are generated automatically the first time the app runs, by <code>db.init_db()</code> and <code>logging_setup.get_logger()</code> respectively, and are gitignored rather than committed. There's nothing to read here at the code level; it's pure runtime output.</p>
+
+      <div class="page-nav"><a class="nav-link" data-page="b4">← B4: The export/ folder</a><span></span></div>
     </section>
 
   </main>

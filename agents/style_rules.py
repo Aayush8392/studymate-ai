@@ -108,9 +108,16 @@ STYLE_RULES = {
 - Write like you're explaining to a total beginner who has never heard of this
   topic before. Assume ZERO background knowledge, not even related terms.
 - HARD RULE: keep sentences to roughly 15 words or fewer. One idea per sentence.
-- HARD RULE: every single technical term must be immediately explained in plain
-  words the moment it's used, every time, even terms that seem "basic" in this
-  field -- never assume the reader already knows it.
+- HARD RULE: every single technical term must be explained in plain words the
+  first time it's used, every time, even terms that seem "basic" in this field
+  -- never assume the reader already knows it. BUT vary HOW you do this from
+  term to term -- do not default to the same "X, which is Y, does Z" sentence
+  shape for every term in a row. Mix it up: sometimes give the definition in
+  its own short sentence right after ("Perception is how the agent senses its
+  surroundings. It uses this to..."), sometimes show the meaning through a
+  quick example instead of a formal definition, sometimes use a short dash or
+  parenthetical. If you notice you've used the same construction two terms in
+  a row, rewrite the second one differently.
 - Prefer everyday words over academic ones (e.g. "figures out" not "ascertains").
 - For the "analogy" field: use a playful, concrete, everyday-life comparison
   (a kitchen, a sports game, a pet, a familiar chore) -- something a total
@@ -119,7 +126,9 @@ STYLE_RULES = {
     "standard": """EXPLANATION STYLE: Standard.
 - Write at a normal undergraduate course level.
 - Use standard academic vocabulary and technical terms, but briefly define each
-  one the first time it's used so it's not assumed knowledge.
+  one the first time it's used so it's not assumed knowledge. Vary how you
+  introduce each definition rather than repeating the same sentence pattern
+  for every term.
 - Clear, well-structured sentences of moderate length -- not oversimplified,
   not dense.
 - For the "analogy" field: a clear real-world or domain-adjacent comparison is
@@ -140,6 +149,29 @@ STYLE_RULES = {
   something, never an empty string, and never a childish everyday analogy.
 - Prioritize accuracy, precision, and nuance over accessibility.""",
 }
+
+# Applies on top of every style above, regardless of which one is active --
+# the style rules above control vocabulary/sentence-length/tone, this
+# separately controls whether consecutive sentences actually read as connected
+# writing or as a list of standalone facts stapled together. Added after a
+# real, observed failure: content generated under Simple style (which also
+# demands short sentences AND an inline definition for every term) kept
+# reaching for the same "X, which is Y, does Z" sentence template over and
+# over -- individually correct sentences that, read as a paragraph, felt like
+# separate facts glued together rather than one person explaining something.
+FLOW_RULES = """WRITING FLOW -- follow this regardless of which style is active above:
+- Write connected prose. Each sentence should follow naturally from the one
+  before it -- referring back to what was just said, building on it, or
+  contrasting with it -- not just stating the next fact in isolation.
+- Do not reuse the same sentence template repeatedly (e.g. defining every new
+  term with "X, which is Y, does Z"). If you catch yourself about to write the
+  same shape of sentence again, rewrite it a different way instead.
+- When moving from one idea to the next, use a real transition that shows how
+  they relate -- not a generic list connector like "Next," "Also," or
+  "Another point is" standing in for actual reasoning.
+- The test for whether this is working: read it back as a student would. It
+  should read like someone explaining a topic to you, not like a list of
+  dictionary entries in sentence form."""
 
 VALID_STYLES = list(STYLE_RULES)
 VALID_DEPTHS = list(DEPTH_PARAMS)
@@ -188,14 +220,14 @@ def style_depth_block(style: str, depth: str) -> str:
     directly into flashcard answers instead."""
     style_text = STYLE_RULES.get(style, STYLE_RULES[DEFAULT_STYLE])
     depth_text = _depth_rules_text(style, depth)
-    return f"{style_text}\n\n{depth_text}"
+    return f"{style_text}\n\n{depth_text}\n\n{FLOW_RULES}"
 
 
 def style_only_block(style: str) -> str:
     """Just the vocabulary/tone rules, safe for any agent's prompt regardless
     of its own JSON schema -- use this for flashcards/quiz, not the full
     style_depth_block (see its docstring)."""
-    return STYLE_RULES.get(style, STYLE_RULES[DEFAULT_STYLE])
+    return f"{STYLE_RULES.get(style, STYLE_RULES[DEFAULT_STYLE])}\n\n{FLOW_RULES}"
 
 
 def concept_granularity_text(depth: str) -> str:

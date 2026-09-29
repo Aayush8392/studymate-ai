@@ -114,6 +114,12 @@ def now_iso():
 _EMPTY_SUMMARY = {
     "from_notes": "", "explained_further": "", "comparisons_and_limits": "", "analogy": "",
     "exam_answer_example": "", "expand_hints": [], "why_it_matters": "", "key_terms": [],
+    # Bookkeeping for the notes "Expand" feature -- not model output, filled in
+    # by app.py as the student clicks. hints_shown accumulates every hint ever
+    # surfaced (used to detect when a fresh round of hints is really just a
+    # reworded repeat of one already covered); expand_rounds_used is a flat
+    # safety-net cap, independent of that content check.
+    "expand_rounds_used": 0, "hints_shown": [],
 }
 
 

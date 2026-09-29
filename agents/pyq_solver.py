@@ -285,6 +285,14 @@ specifically applies to this question, and a concrete example or elaboration.
 Do not compress a hint into one or two sentences -- give it the same level of
 depth as the rest of the answer.
 
+Write the WHOLE addition as one connected piece of writing, not one
+self-contained mini-paragraph per hint stapled after another. Read the
+CURRENT ANSWER below first and continue in the same voice, as if you were
+still mid-answer -- do not restart with a generic opener like "Next," or
+"Another point is." When you move from covering one hint to the next, connect
+them with real reasoning (how the new point relates to, builds on, or
+contrasts with what was just said), not a list-style transition.
+
 Also produce a FRESH set of 2-4 "to go further" hints for what's still
 missing after this addition -- do not repeat any of the hints already used.
 

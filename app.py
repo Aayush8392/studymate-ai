@@ -1,6 +1,7 @@
 """StudyMate AI -- Streamlit app: upload notes, generate study material,
 review flashcards, take quizzes, and watch the adaptive loop respond to
 weak concepts. Export a portable offline HTML study pack anytime."""
+import json
 import re
 from datetime import datetime
 import streamlit as st
@@ -12,13 +13,18 @@ from services.note_parser import parse_uploaded_file
 from export.export_builder import build_html, build_pdf
 from agents.style_rules import VALID_STYLES, VALID_DEPTHS, DEFAULT_STYLE, DEFAULT_DEPTH
 from agents.vision_reader import extract_notes_from_images
-from agents import pyq_solver
+from agents import pyq_solver, orchestrator, summarizer
 
 load_dotenv()
 db.init_db()
 
 STYLE_LABELS = {"simple": "Simple", "standard": "Standard", "technical": "Technical"}
 DEPTH_LABELS = {"overview": "Overview", "standard": "Standard", "deep": "Deep dive"}
+
+# Safety-net cap on how many times a concept's notes can be expanded -- the
+# normal stopping signal is content exhaustion (see the expand_notes block
+# below), this only guards against that check somehow never triggering.
+NOTES_EXPANSION_ROUND_CAP = 5
 
 
 def _safe_filename(title: str) -> str:
@@ -246,7 +252,7 @@ def _is_busy() -> bool:
     if st.session_state.get("generating_notes") or st.session_state.get("solving_pyq"):
         return True
     return any(
-        (k.startswith("fixing_weak_") or k.startswith("expanding_pyq_")) and v
+        (k.startswith("fixing_weak_") or k.startswith("expanding_pyq_") or k.startswith("expanding_notes_")) and v
         for k, v in st.session_state.items()
     )
 
@@ -386,12 +392,23 @@ with st.sidebar:
             notes_parts.append(pasted.strip())
 
         notes_text = "\n\n".join(notes_parts) if notes_parts else None
+        is_material, irrelevance_reason = (
+            orchestrator.check_is_study_material(notes_text) if notes_text else (True, "")
+        )
         if error:
             st.session_state.gen_error = error
             st.session_state.generating_notes = False
             st.rerun()
         elif not notes_text:
             st.session_state.gen_error = "Upload file(s)/image(s) or paste some notes first."
+            st.session_state.generating_notes = False
+            st.rerun()
+        elif not is_material:
+            st.session_state.gen_error = (
+                "This doesn't look like study material"
+                + (f" ({irrelevance_reason})" if irrelevance_reason else "")
+                + " -- upload notes, textbook content, or slides instead."
+            )
             st.session_state.generating_notes = False
             st.rerun()
         else:
@@ -567,10 +584,65 @@ with tab_summary:
                 st.markdown("**How to write this in an exam**")
                 st.success(summary["exam_answer_example"])
 
-            if summary.get("expand_hints"):
+            rounds_used = summary.get("expand_rounds_used", 0)
+            if summary.get("expand_hints") and rounds_used < NOTES_EXPANSION_ROUND_CAP:
                 st.markdown("**To go further, mention:**")
                 for hint in summary["expand_hints"]:
                     st.markdown(f"- {hint}")
+
+                expand_notes_key = f"expanding_notes_{c['id']}"
+                expand_notes_error_key = f"expand_notes_error_{c['id']}"
+                if expand_notes_key not in st.session_state:
+                    st.session_state[expand_notes_key] = False
+                if st.session_state.get(expand_notes_error_key):
+                    st.error(st.session_state.pop(expand_notes_error_key))
+
+                expand_notes_clicked = st.button(
+                    "Explain this further using these hints", key=f"expand_notes_btn_{c['id']}",
+                    disabled=_BUSY,
+                )
+                if expand_notes_clicked and not st.session_state[expand_notes_key]:
+                    st.session_state[expand_notes_key] = True
+                    st.rerun()
+
+                if st.session_state[expand_notes_key]:
+                    try:
+                        with st.spinner("Explaining this further..."):
+                            result = summarizer.expand_explanation(
+                                c["name"], doc["raw_text"], summary["explained_further"],
+                                summary["expand_hints"], style=doc["explanation_style"],
+                                depth=doc["depth_level"],
+                            )
+                        new_explanation = summary["explained_further"] + "\n\n" + result["addition"]
+
+                        # A fresh hint only counts as genuinely new if it isn't just
+                        # a reworded repeat of one already shown in an earlier round
+                        # -- reuses the exact same similarity check as flashcard
+                        # dedup (Section 6), rather than trusting the model's own
+                        # claim that new_hints are actually new.
+                        hints_shown = summary.get("hints_shown", []) + summary["expand_hints"]
+                        seen_normalized = [pipeline._normalize(h) for h in hints_shown]
+                        genuinely_new_hints = [
+                            h for h in result["new_hints"]
+                            if not pipeline._is_duplicate(h, seen_normalized)
+                        ]
+                        new_rounds_used = rounds_used + 1
+                        # Hard safety-net cap, independent of the content check above --
+                        # never the normal way this stops, just protection against the
+                        # content-exhaustion check somehow never triggering.
+                        next_hints = genuinely_new_hints if new_rounds_used < NOTES_EXPANSION_ROUND_CAP else []
+
+                        updated_summary = dict(summary)
+                        updated_summary["explained_further"] = new_explanation
+                        updated_summary["expand_hints"] = next_hints
+                        updated_summary["hints_shown"] = hints_shown
+                        updated_summary["expand_rounds_used"] = new_rounds_used
+                        db.update_concept_summary(c["id"], json.dumps(updated_summary))
+                    except Exception as e:
+                        st.session_state[expand_notes_error_key] = f"Couldn't explain further: {describe_error(e)}"
+                    finally:
+                        st.session_state[expand_notes_key] = False
+                    st.rerun()
 
             if summary.get("why_it_matters"):
                 st.caption(f"**Why it matters:** {summary['why_it_matters']}")
